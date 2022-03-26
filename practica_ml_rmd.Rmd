@@ -1,0 +1,2129 @@
+---
+title: "Práctica Machine Learning I"
+author: "Miguel García y Luisa Yánez"
+date: "22/04/2022"
+output:
+ html_document:
+  code_folding: hide
+  toc: yes
+  toc_float: TRUE
+  toc_depth: 3 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# FAD - FUNDAMENTOS DE ANÁLISIS DE DATOS
+
+# 1. Introducción 
+
+La práctica a desarrollar consiste en la elaboración y presentación de un informe de un proyecto de Ciencia de Datos, utilizando las técnicas aprendidas durante la asignatura, aplicadas al conjunto de datos seleccionados. 
+
+
+## 1.1. Lenguaje de programación y herramienta de control de versiones utilizados
+
+El grupo eligió trabajar en lenguage R (RStudio version 1.4.1717) y utilizar como herramienta de control de versiones GitHub. El proyecto "/practica_ml" fue creado por Isabela Ignacio (usuario IsaPires1329)y compartido con los restantes participantes del grupo Luisa Yánez (usuario lyanezgu) y Miguel García (usuario mgarciasanc2021).
+
+**Link del proyecto en GitHub:** <https://github.com/IsaPires1329/practica_ml.git>.
+
+
+## 1.2. Paquestes R utilizados
+
+```{r librerias, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+library(formatR)
+library(readr)
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(tidyr)
+library(missForest)
+library(VIM)
+library(formattable)
+library(usmap)
+library(cowplot)
+library(corrplot)
+library(MASS)
+library(ggfortify)
+library(nortest)
+library(car)
+library(lmtest)
+library(PerformanceAnalytics)
+library(Amelia)
+library(ggthemes)
+library(tidyverse)
+library(tibble)
+library(gridExtra)
+library(ggbiplot)
+library(factoextra)
+library(caret)
+library(ISLR)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(tsne)
+library(Rtsne)
+library(class)
+library(ada)
+library(factoextra)
+library(cluster)
+library(useful)
+library(mgcv)
+library(xgboost)
+library(randomForest)
+library(kernlab)
+library(pROC)
+install.packages("doMC", repos="http://R-Forge.R-project.org")
+library(doMC)
+library(ggpubr)
+
+
+```
+
+# 2. Conjunto de datos elegido
+
+El conjunto de datos elegido por el grupo se llama "Red Wine Quality" e incluye información sobre la variantes de vino tinto dentro del "Vinho Verde" portugués analizándolo y describiéndolo a través de sus características fisicoquímicas y sensoriales.  
+
+**Link del data set:** <https://www.kaggle.com/uciml/red-wine-quality-cortez-et-al-2009>.
+
+
+## 2.1. Carga de los datos
+
+El conjunto de datos "Red Wine Quality" contiene 12 columnas y 1599 filas y lo obtenemos en formato .CSV. 
+
+Inicialmente se han guardado los datos en un data frame llamado "red_wine" y se ha realizado un estudio inicial sobre su contenido utilizando la función head y summary.
+
+```{r cargas datos, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+red_wine <- read_csv("winequality-red.csv")
+head(red_wine)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+summary(red_wine)
+
+```
+
+## 2.2. Definición de las variables que componen los datos de estudio
+
+Empezando ya el análisis inicial del conjunto de datos que tenemos, vemos que las 12 variables que componen los datos pueden ser descritas como:
+
+**Input variables o Varibles de entrada/predictoras (basado en pruebas fisicoquímicas):**
+
+* **fixed acidity:** La mayoría de los ácidos involucrados con el vino son o fijos o no volátiles (no se evaporan fácilmente).
+* **volatile acidity:** La cantidad de ácido acético en el vino, que a niveles demasiado altos puede conducir a un sabor desagradable a vinagre.
+* **citric acid:** Encontrado en pequeñas cantidades, el ácido cítrico puede agregar "frescura" y sabor a los vinos.
+* **residual sugar:** La cantidad de azúcar restante después de que se detiene la fermentación, es raro encontrar vinos con menos de 1 gramo / litro y vinos con más de 45 gramos / litro se consideran dulces.
+* **chlorides:** La cantidad de sal en el vino.
+* **free sulfur dioxide:** La forma libre de SO2 existe en equilibrio entre el SO2 molecular (como gas disuelto) y el ion bisulfito; previene el crecimiento microbiano y la oxidación del vino
+* **total sulfur dioxide:** Importe de las formas libres y consolidadas de S02; en bajas concentraciones, el SO2 es en su mayoría indetectable en el vino, pero a concentraciones libres de SO2 superiores a 50 ppm, el SO2 se hace evidente en la nariz y el sabor del vino.
+* **density:** La densidad es cercana a la del agua dependiendo del porcentaje de alcohol y contenido de azúcar.
+* **pH:** Describe qué tan ácido o básico es un vino en una escala de 0 (muy ácido) a 14 (muy básico); la mayoría de los vinos están entre 3-4 en la escala de pH.
+* **sulphates:** Un aditivo del vino que puede contribuir a los niveles de gas de dióxido de azufre (S02), que actúa como antimicrobiano y antioxidante
+* **alcohol:** El porcentaje de contenido alcohólico del vino (%)
+
+**Output variable o Variable de salida/respuesta/objetivo (basado en datos sensoriales):**
+
+* **quality:** Variable de salida (basada en datos sensoriales, puntuación entre 0 y 10)
+
+
+## 2.3. Definición de los objetivos
+
+El objetivo final del proyecto es conseguir llegar a un modelo que permita predecir la calidad del vino tinto de la variedad portuguesa de "Vinho Verde" y saber si estamos ante vinos recomendables (aprobados/bebibles) o no recomendables y que se deberían evitar (suspensos/no bebibles).
+
+
+## 2.4. Limpieza inicial del conjunto de datos
+
+### 2.4.1. Cambio de nombres de las columnas
+
+Se ha decidido realizar un cambio en el nombre de las variables que aparecen en las columnas de los datos para así seguir un mismo patrón y a la vez evitar tener espacios que nos pueden llegar a dar problemas a futuro.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+names(red_wine) <- c("fixed_acidity", "volatile_acidity", "citric_acid", "residual_sugar",
+                     "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide", "density", 
+                     "pH", "sulphates", "alcohol", "quality")
+head(red_wine)
+
+```
+
+
+### 2.4.2. Cambio de tipo de variable
+
+Todas las variables input de las que disponemos en el dataset son de tipo numérico y entendemos que en principio no requieren ninguna transformación en ese sentido.
+
+Cabría la posibilidad de tratar de transformar la variable "quality" (output) en factor para hacerla categórica en función de la calidad del vino (clasificación del vino en números enteros entre el 0 y el 10). Se podría pasar a categorizar el vino como "malo", "normal" y "bueno", como "apobado" o "suspenso", o del 0 al 10 en las diferentes categorías numéricas que vienen predefinidas.
+
+```{r}
+str(red_wine)
+
+```
+
+# 3. Añadiendo datos faltantes al data set
+
+A través de la función summary empezamos comprobando que no hay datos faltantes en el data set. Por ello el grupo ha tenido que añadirlos manualmente para tratar de aproximarnos a un caso más real donde lo normal es encontrarlos y tener que lidiar con ellos.
+
+Los datos faltantes han sido imputados exclusivamente en las columnas que no creemos que no van a servir de análisis principal para este estudio (pH y sulphates), para así intentar que la predicción que hagamos sea lo más precisa posible.
+
+Utilizamos la librería missForest y generamos una semilla para que el resultado sea siempre el mismo.
+
+```{r df, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+red_wine
+set.seed(101)
+red_wine <-bind_cols(red_wine[c(1,2,3,4,5,6,7,8,11,12)],
+                             missForest::prodNA(red_wine[c(-1,-2,-3,-4,-5,-6,-7,-8,-11,-12)],noNA=0.1))
+red_wine
+
+```
+
+Haciendo uso de la librería VIM y de la librería Amelia, analizamos la estructura que tienen nuestros datos faltantes dentro de nuestro data set para ver y entender como se distribuyen y a que variables afecta. 
+
+Se puede comprobar que la proporción de datos faltantes en estas variables es de aproximadamente 10% y hay 15 filas en que las dos variables son faltantes.
+
+```{r dfdos, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+summary(aggr(red_wine,numbers=T,sortVar=T))
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+missmap(red_wine, main="Missing Map")
+
+```
+
+
+# 4. Partición del conjunto de datos: data set training y data set test
+
+Una vez vistos por encima la estructura general de los datos y habiendo añadido los datos faltantes que nos hacian falta, pasamos a dividir el conjunto de datos en dos para diferenciar los que usaremos de entrenamiento de los que usaremos de test (viendo la cantidad de datos de la que disponemos, la distribución elegida ha sido: 20% test y 80% training). Establecemos una semilla que nos guarde de forma permanente la división que hacemos para que la distribución de los datos sea siempre la misma.
+
+Guardamos además la partición de datos de test para ser utilizada a futuro para la validación del modelo final y pasamos a trabajar de aquí en adelante con la partición de training.
+
+```{r p, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(101)
+sample <- sample.int(n=nrow(red_wine), size=floor(.80*nrow(red_wine)), replace = F)
+train <- red_wine[sample,]
+test <- red_wine[-sample,]
+train
+test
+
+```
+
+
+# 5. Detección, tratamiento e imputación de datos faltantes
+
+Para la imputación de datos faltantes en las columnas "pH" y "sulphates", se ha decidido reemplazar todos sus NAs según los valores medianos de las mismas variables.
+
+Con la función summary se comprueba que ya no hay más datos faltantes en el data set train.
+
+```{r imputacion, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train$pH[is.na(train$pH)]<-median(train$pH,na.rm = TRUE)
+train$sulphates[is.na(train$sulphates)]<-median(train$sulphates,na.rm = TRUE)
+summary(train)
+
+```
+
+# 6. EDA - Análisis exploratorio de datos
+
+## 6.1. Análisis de la distribución de las variables
+
+Analizamos como se distribuyen las diferentes variables de nuestro dataset.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>% keep(is.numeric) %>%  gather() %>% ggplot(aes(value,fill=key)) +facet_wrap(~ key, scales = "free") +
+    geom_histogram(bins=sqrt(nrow(train)))+ theme(legend.position="none")
+
+```
+
+A partir de las gráficas podemos ver que algunas de las variables están distribuidas de forma normal, y parte de las variables están sesgadas a la derecha.
+
+La distribución de "fixed_acidity" y "volatile_acidity" es muy similar, lo que indica que hay ciertas similitudes entre los dos indicadores fisicoquímicos.
+
+Las variables "density" y el "pH" se distribuyen normalmente, lo que indica que todos los vinos tintos tienen poca diferencia en estos dos indicadores. No se requiere por tanto transformación alguna de su distribución.
+
+Las variables "residual_sugar", "chlorides", "free_sulfur_dioxide", "total_sulfur_dioxide", and "sulphates" están muy sesgadas, por lo qye sería conveniente transformarlas para que la distribución de sus valores fuese más homogénea. Este resultado se consigue aplicando una transformación logarítmica y normalizando de esa manera sus distribuciones:   
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train <- train %>% mutate(Log_residual_sugar = log(residual_sugar),
+                    Log_chlorides = log(chlorides),
+                    Log_free_sulfur_dioxide = log(free_sulfur_dioxide),
+                    Log_total_sulfur_dioxide = log(total_sulfur_dioxide),
+                    Log_sulphates = log(sulphates))
+
+ga <- train %>% ggplot(aes(x=Log_residual_sugar)) + geom_histogram(bins = 20, fill = "#619CFF")
+gb <- train %>% ggplot(aes(x=Log_chlorides)) + geom_histogram(bins = 20, fill = "#E58700")
+gc <- train %>% ggplot(aes(x=Log_free_sulfur_dioxide)) + geom_histogram(bins = 20, fill = "#00BF7D")
+gd <- train %>% ggplot(aes(x=Log_total_sulfur_dioxide)) + geom_histogram(bins = 20, fill = "#FD61D1")
+ge <- train %>% ggplot(aes(x=Log_sulphates)) + geom_histogram(bins = 20, fill = "#B983FF")
+
+grid.arrange(ga,gb,gc,gd,ge)
+
+```
+
+Modificamos nuestro dataset original para que las variables transformadas a logaritmos sustituyan a las mismas pero aún sin transformar. Tendremos de ese modo un dataset con 12 variables también, pero 5 de ellas transformadas a logaritmos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train <- train %>% dplyr::select(-residual_sugar, -chlorides, -free_sulfur_dioxide, -total_sulfur_dioxide, -sulphates)
+train %>% summary
+
+```
+
+Una vez realizadas las transformaciones logaritmicas oportunas sobre las 5 variables que lo requerían, volvemos a ver de forma general las distribuciones del conjunto total de variables:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>% keep(is.numeric) %>%  gather() %>% ggplot(aes(value,fill=key)) +facet_wrap(~ key, scales = "free") +
+    geom_histogram(bins=sqrt(nrow(train)))+ theme(legend.position="none")
+
+```
+
+Analizamos en detalle como se distribuye la variable de salida "quality" referente a las puntuaciones de calidad de entre 0 y 10 de los vinos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+ggplot(data = train) + geom_bar(mapping = aes(x = quality, fill=as.factor(quality))) + 
+labs(title= "Histograma Calidad Vino")
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+table(train$quality)
+prop.table(table(train$quality))
+
+```
+
+Con la gráfica y los datos podemos ver que la mayor parte de los vinos (sobre un 83% de ellos) están clasificados con valores de calidad de 5 y 6, sobre calificaciones que van de 0 a 10.
+
+## 6.2. Boxplot - análisis de la variables de relevancia y de los atípicos observados
+
+Analizamos si nuestras variables tienen valores atípicos, cuales son sus valores medios y vemos sus intervalos de confianza, a través de gráficos de tipo Boxplot.
+
+**Boxplot variable alcohol**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_alcohol <- ggplot(train, aes(x=factor(quality),y=alcohol))+geom_boxplot() +
+    geom_boxplot(fill= "#F8766D") + ggtitle("Boxplot alcohol")
+BoxPlot_alcohol
+
+```
+
+Apreciamos que los vinos con mejor puntuación en "quality" tienen en general mayor % de alcohol.
+
+**Boxplot variable citric_acid**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_citric_acid <- ggplot(train, aes(x=factor(quality),y=citric_acid))+geom_boxplot() +
+  geom_boxplot(fill= "#E58700") + ggtitle("Boxplot citric_acid")
+BoxPlot_citric_acid
+
+```
+
+Apreciamos que los vinos con mejor puntuación en "quality" tienen en general mayor cantidad de ácido cítrico.
+
+**Boxplot variable density**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_density <- ggplot(train, aes(x=factor(quality),y=density))+geom_boxplot() +
+  geom_boxplot(fill= "#C99800") + ggtitle("Boxplot density")
+BoxPlot_density
+
+```
+
+Apreciamos que los vinos con mejor puntuación en "quality" tienen en general una leve menor densidad, pero no es una variable determinante en la calidad del producto.
+
+**Boxplot variable fixed_acidity**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_fixed_acidity <- ggplot(train, aes(x=factor(quality),y=fixed_acidity))+geom_boxplot() +
+  geom_boxplot(fill= "#6BB100") + ggtitle("Boxplot fixed_acidity")
+BoxPlot_fixed_acidity
+
+```
+
+Apreciamos que la variable "fixed_acidity" se mantiene bastante estable independientemente de la calidad final del vino, sin tener grandes diferencias entre los diferentes rangos de calidad.
+
+**Boxplot variable Log_chlorides**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_Log_chlorides <- ggplot(train, aes(x=factor(quality),y=Log_chlorides))+geom_boxplot() +
+  geom_boxplot(fill= "#00BA38") + ggtitle("Boxplot Log_chlorides")
+BoxPlot_Log_chlorides
+
+```
+
+Apreciamos que la variable "Log_chlorides" se mantiene bastante estable independientemente de la calidad final del vino, sin tener grandes diferencias entre los diferentes rangos de calidad.
+
+**Boxplot variable Log_free_sulfur_dioxide**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_Log_free_sulfur_dioxide <- ggplot(train, aes(x=factor(quality),y=Log_free_sulfur_dioxide))+geom_boxplot() +
+  geom_boxplot(fill= "#00BF7D") + ggtitle("Boxplot Log_free_sulfur_dioxide")
+BoxPlot_Log_free_sulfur_dioxide
+
+```
+
+No se aprecia una tendencia específica en la variable "Log_free_sulfur_dioxide" que sea decisiva en la calidad del vino.
+
+**Boxplot variable Log_residual_sugar**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_Log_residual_sugar <- ggplot(train, aes(x=factor(quality),y=Log_residual_sugar))+geom_boxplot() +
+  geom_boxplot(fill= "#00C0AF") + ggtitle("Boxplot Log_residual_sugar")
+BoxPlot_Log_residual_sugar
+
+```
+
+Apreciamos que la variable "Log_residual_sugar" se mantiene bastante estable independientemente de la calidad final del vino, sin tener grandes diferencias entre los diferentes rangos de calidad.
+
+**Boxplot variable Log_sulphates**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_Log_sulphates <- ggplot(train, aes(x=factor(quality),y=Log_sulphates))+geom_boxplot() +
+  geom_boxplot(fill= "#00BCD8") + ggtitle("Boxplot Log_sulphates")
+BoxPlot_Log_sulphates
+
+```
+
+Apreciamos que los vinos con mejor puntuación en "quality" tienen en general mayor cantidad de la variable "Log_sulphates", aunque existen bastantes outlier e puntuaciones de 5 y 6, que podrían llevar a error.
+
+**Boxplot variable Log_total_sulfur_dioxide**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_Log_total_sulfur_dioxide <- ggplot(train, aes(x=factor(quality),y=Log_total_sulfur_dioxide))+geom_boxplot() +
+  geom_boxplot(fill= "#00B0F6") + ggtitle("Boxplot Log_total_sulfur_dioxide")
+BoxPlot_Log_total_sulfur_dioxide
+
+```
+
+No se aprecia una tendencia específica en la variable "Log_total_sulfur_dioxide" que sea decisiva en la calidad del vino.
+
+**Boxplot variable pH**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_pH <- ggplot(train, aes(x=factor(quality),y=pH))+geom_boxplot() +
+  geom_boxplot(fill= "#B983FF") + ggtitle("Boxplot pH")
+BoxPlot_pH
+
+```
+
+Apreciamos que los vinos con mejor puntuación en "quality" tienen en general un leve menor valor de pH,aunque existen numeros outliers en vinos puntuados con 5 y 6 que podrían llevar a error.
+
+**Boxplot variable volatile_acidity**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+BoxPlot_volatile_acidity <- ggplot(train, aes(x=factor(quality),y=volatile_acidity))+geom_boxplot() +
+  geom_boxplot(fill= "#FF67A4") + ggtitle("Boxplot volatile_acidity")
+BoxPlot_volatile_acidity
+
+```
+
+Apreciamos que los vinos con mejor puntuación en "quality" tienen en general menor cantidad de "ácido cítrico"volatile_acidity".
+
+## 6.3. Correlación entre variables
+
+Continuando con en análisis de las distintas variables del data set y el estudio de como se relacionan entre si, queremos ver de forma global como se correlacionan las variables numéricas que nos pueden llegar a servir para el modelo de predicción.
+
+### 6.3.2. Análisis de la correlación global del conjunto de variables
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+pairs(train)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+corrplot(cor(train %>% mutate(quality = as.numeric(quality))%>% keep(is.numeric)))
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+res <- cor(train %>% mutate(quality = as.numeric(quality)) %>% keep(is.numeric))
+round(res, 2)
+
+```
+
+Vemos que las variables que más estan correlacionadas con la variable "quality" son: "volatile_acidity", "citric_acid", "alcohol" y "Log_sulphates".
+
+### 6.3.1. Análisis de la correlación bivariante
+
+Realizamos un análisis bivariante para ver que variables están más correlacionadas, positva o negativamente, entre si.
+
+**Correlación: fixed_acidity y citric_acid:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$fixed_acidity, y = train$citric_acid)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(fixed_acidity, citric_acid)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables fixed_acidity y citric_acid",
+    x = "fixed_acidity", y = "citric_acid")
+
+```
+
+**Correlación: fixed_acidity y density:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$fixed_acidity, y = train$density)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(fixed_acidity, density)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables fixed_acidity y density",
+    x = "fixed_acidity", y = "density")
+
+```
+
+**Correlación: fixed_acidity y pH:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$fixed_acidity, y = train$pH)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(fixed_acidity, pH)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables fixed_acidity y pH",
+    x = "fixed_acidity", y = "pH")
+
+```
+
+**Correlación: citric_acid y volatile_acidity:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$citric_acid, y = train$volatile_acidity)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(citric_acid, volatile_acidity)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables citric_acid y volatile_acidity",
+    x = "citric_acid", y = "volatile_acidity")
+
+```
+
+**Correlación: citric_acid y pH:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$citric_acid, y = train$pH)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(citric_acid, pH)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables citric_acid y pH",
+    x = "citric_acid", y = "pH")
+
+```
+
+**Correlación: density y Log_residual_sugar:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$density, y = train$Log_residual_sugar)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(density, Log_residual_sugar)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables density y Log_residual_sugar",
+    x = "density", y = "Log_residual_sugar")
+
+```
+
+**Correlación: density y alcohol:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$density, y = train$alcohol)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(density, alcohol)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables density y alcohol",
+    x = "density", y = "alcohol")
+
+```
+
+**Correlación: quality y alcohol:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$quality, y = train$alcohol)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(train$quality, train$alcohol)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables quality y alcohol",
+    x = "quality", y = "alcohol")
+
+```
+
+**Correlación: quality y volatile_acidity:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$quality, y = train$volatile_acidity)
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(quality, volatile_acidity)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables quality y volatile_acidity",
+    x = "quality", y = "volatile_acidity")
+
+```
+
+**Correlación: Log_free_sulfur_dioxide y Log_total_sulfur_dioxide:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cor(x = train$Log_free_sulfur_dioxide, y = train$Log_total_sulfur_dioxide)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train %>%
+    ggplot(aes(Log_free_sulfur_dioxide, Log_total_sulfur_dioxide)) +
+    geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
+    method = "lm") + labs(title = "Relación entre variables Log_free_sulfur_dioxide y Log_total_sulfur_dioxide",
+    x = "Log_free_sulfur_dioxide", y = "Log_total_sulfur_dioxide")
+
+```
+
+
+# 7. Cambios, modificaciones y transformaciones sobre el dataset de test
+
+Realizamos los cambios y modificaciones necesarias sobre el conjunto de datos de test, aplicados previamente sobre nuestro dataset de train.
+
+Imputamos los NAs del data set de test:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test$pH[is.na(test$pH)]<-median(test$pH,na.rm = TRUE)
+test$sulphates[is.na(test$sulphates)]<-median(test$sulphates,na.rm = TRUE)
+summary(test)
+
+```
+
+Transformamos a logaritmicas las variables previamente normalizadas:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test <- test %>% mutate(Log_residual_sugar = log(residual_sugar),
+                    Log_chlorides = log(chlorides),
+                    Log_free_sulfur_dioxide = log(free_sulfur_dioxide),
+                    Log_total_sulfur_dioxide = log(total_sulfur_dioxide),
+                    Log_sulphates = log(sulphates))
+
+```
+
+Modificamos nuestro dataset de test para que las variables transformadas a logaritmos sustituyan a las mismas pero aún sin transformar. Tendremos de ese modo un dataset con 12 variables también, pero 5 de ellas transformadas a logaritmos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test <- test %>% dplyr::select(-residual_sugar, -chlorides, -free_sulfur_dioxide, -total_sulfur_dioxide, -sulphates)
+head(test)
+
+```
+
+# 8. Regresion lineal multiple
+
+Una vez analizado en profundidad nuestro conjunto de datos y habiendo entendido y tranformado nuetras variables, trataremos de ajustar un modelo de regresión lineal múltiple que trate de predicir la calidad del vino tinto de la variedad portuguesa de "Vinho Verde".
+
+## 8.1. Ajuste del modelo de regresión
+
+Ajustamos un modelo de regresión lineal mútiple con el que vamos a predecir el valor de la variable quality a partir de las siguientes variables independientes(cogemos todas las variables menos "Log_residual_sugar" que no presenta ninguna correlación con la variable "quality") seleccionadas en base a los análisis y estudios de correlación vistos con anterioridad.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+modelo = lm(quality ~ alcohol + fixed_acidity + volatile_acidity + citric_acid + Log_chlorides + 
+              Log_total_sulfur_dioxide + Log_free_sulfur_dioxide + density + pH + Log_sulphates , data = train)
+
+summary(modelo)
+
+```
+
+## 8.2. Seleccion de variables para modelo de regresión
+
+Para la selección de variables se utiliza el método de la selección automática por pasos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+empty.model <- lm(quality ~ 1, data = train)
+horizonte <- formula(quality ~ alcohol + fixed_acidity + volatile_acidity + citric_acid + Log_chlorides + 
+              Log_total_sulfur_dioxide + Log_free_sulfur_dioxide + density + pH + Log_sulphates)
+# metodo de selección por pasos e indica las variables que
+# son significativas
+seleccion = stepAIC(empty.model, direction = c("both"), trace = FALSE,
+    scope = horizonte)
+seleccion$anova
+
+```
+
+Vemos la información del modelo elegido como “mejor”
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+summary(seleccion)
+
+```
+
+Nos quedamos con el modelo seleccionado como el mejor para la regresión según el método utilizado anteriormente.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+mejor_modelo = lm(quality ~ alcohol + volatile_acidity + Log_sulphates + 
+    Log_chlorides + pH + Log_total_sulfur_dioxide + citric_acid + 
+    fixed_acidity, data = train)
+
+summary(mejor_modelo)
+
+```
+
+### 8.2.1. Intervalos de confianza
+
+Determinamos los intervalos de confianza para las observaciones de nuestros datos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+intervalos = predict(mejor_modelo, interval = "confidence", level = 0.95)
+head(intervalos)
+
+```
+
+### 8.2.2. Tabla anova
+
+La tabla anova nos muestra la significación de la regresión
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+anova = aov(mejor_modelo)
+summary(anova)
+
+```
+
+## 8.3. Diagnosis del modelo según el cumplimiento de los siguientes supuestos
+
+### 8.3.1. Multicolinealidad
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+vif(mejor_modelo)
+mean(vif(mejor_modelo))
+
+```
+
+Generalmente, un VIF por encima de 4 o una tolerancia por debajo de 0,25 indica que podría existir multicolinealidad (fuerte correlación entre variables explicativas del modelo) y se requiere más investigación. Cuando el VIF es superior a 10 o la tolerancia es inferior a 0,1, existe una multicolinealidad significativa que debe corregirse.
+En este caso no se observa multicolinealidad.
+
+### 8.3.2. Linealidad de los residuos
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+mean(mejor_modelo$residuals)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# forma grafico 1
+plot(mejor_modelo, 1)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# forma grafico 2 que te muestra lo mismo
+autoplot(mejor_modelo, 1)
+
+```
+
+En el gráfico de Residuos vs. Ajustes se observa que la media de los residuos es cercana a cero (aunque no de forma constante), luego la linealidad del modelo no se viola en principio. Pero, al tener una variable dependiente como "quality" que es discreta, un modelo de regresión linela normal no se ajusta a nuestros datos.
+
+### 8.3.3. Normalidad de los residuos
+
+Primero se comprueba la normalidad de los residuos, pero al usar Shapiro test solo permite usar las 5000 primeras muestras de los residuos, así que también usamos Anderson-Darling para comparar resultados
+
+**Shapiro-Wilk:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# muestras_residuos=resid(mejor_modelo) obtengo la
+# ditribucion de los residuos estandarizados
+muestras_residuos1 = studres(mejor_modelo)
+residual_norm = shapiro.test(muestras_residuos1[0:5000])
+residual_norm
+
+```
+
+**Anderson-Darling:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# install.packages('nortest')
+residual_anderson = ad.test(muestras_residuos1)
+residual_anderson
+
+```
+
+Este supuesto de normalidad de los residuos también se puede comprobar graficamente y como se ve en la gráfica nuestros datos se separan en las colas de la línea principal y eso nos puede indicar que los residuos no siguen una distribución normal.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# Estas tres graficas te muestran lo mismo
+plot(mejor_modelo, 2)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+autoplot(mejor_modelo, 2)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+hist(muestras_residuos1, freq = FALSE, main = "Distribución de los residuos estandarizados")
+xfit <- seq(min(muestras_residuos1), max(muestras_residuos1),
+    length = 40)
+yfit <- dnorm(xfit)
+lines(xfit, yfit)
+
+```
+
+Con el Q-Q plot vemos que los residuos siguen una distribución normal o al menos se aproximan. Por tanto, se puede asumir que los estimadores de los coeficientes tengan una distribución normal.
+
+### 8.3.4. Homocedasticidad
+
+Vamos a comprobar la homocedasticidad (que los residuos tengan una varianza constante)
+
+Como podemos ver en los resultados p_value < 0.05 por tanto se rechaza la hipotesis nula y esto indica que la varianza no es constante para este modelo de regresion lineal(hay heterocedasticidad, y esto es un problema). Podemos concluir que este modelo matemático no es adecuado.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# https://fhernanb.github.io/libro_regresion/homo.html otra
+# prueba para comprobar homocedasticidad
+ncvTest(mejor_modelo)
+
+```
+
+También podemos comprobar gráficamente la hocedasticidad, sería bueno que la línea roja sea lo más recta/horizontal posible.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+plot(mejor_modelo, 3)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+autoplot(mejor_modelo, 3)
+
+```
+
+
+### 8.3.5. Independencia de los residuos
+
+Como se puede ver en los resultados el p_value > 0.05 por lo que aceptamos la Ho de que hay independencia.
+
+```{r,include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+dwtest(mejor_modelo)
+
+```
+
+Se puede comprobar la independencia de los residuos gráficamente y como se observa no se ven patrónes extraños y esto nos puede indicar que hay independencia en los residuos y que estos no presentan autocorrelación.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+plot(mejor_modelo$resid)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+acf(mejor_modelo$residuals)
+
+```
+
+
+# ML1 - MACHINE LEARNING 1
+
+# 9. Técnicas de reducción de la dimensionalidad
+
+## 9.1. PCA - Principal Component Analysis
+
+Para el análisis de componentes principales cogemos todas las variables de nuestro dataset, menos "quality" que es la que queremos tratar de predecir.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+prcomp_train <- prcomp(train[,-6])
+prcomp_train
+
+```
+Las desviaciones típicas son los autovalores de la matriz de correlaciones, y representan la variabilidad en cada componente. A mayor valor, más relevante es la variable correspondiente a efectos de visualización. Si queremos visualizar la importancia relativa de cada componente, haremos lo siguiente:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+plot(prcomp_train)
+
+```
+
+De modo númérico:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+summary(prcomp_train)
+
+```
+
+Para solucionar el problema de que una variable tenga más relevancia y sea más influyente por el hecho de tener más magnitud, se debe realizar una estandarización:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+prcomp_train <- prcomp(train[,-6], centre = TRUE, scale = TRUE)
+prcomp_train
+
+```
+
+De modo numérico también:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+summary(prcomp_train)
+
+```
+
+Analizamos la varianzas y las componentes de un modo más gráfico:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+prcomp_train.var <- prcomp_train$sdev^2
+prcomp_train.pvar <- prcomp_train.var / sum(prcomp_train.var)
+plot(cumsum(prcomp_train.pvar), xlab = "components", ylab = "cumulative variance", ylim = c(0,1), type = 'b')
+grid()
+abline(h = 0.95, col = "blue")
+
+```   
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+plot(prcomp_train,type = "l", main="Variance explained by PCA")
+
+```  
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+fviz_screeplot(prcomp_train, addlabels = TRUE)
+
+```  
+
+Como vemos, con las dos primeras componentes (PC1 y PC2) recogemos solo el 47.10% de la variabilidad. Con las tres primeras (PC1, PC2 y PC3) incrementamos la cifra hasta el 61.63%. Esto quiere decir que un gráfico de los datos del vino representados por las dos o tres primeras componentes principales no será suficientemente representativo. Vemos además en el gráfico de componentes y varianza acumulada, como son necesarias las 8 primeras PC para cubrir el 95% de la varianza del dataset. Es dificil encontrale sentido a reducir tan solo la dimensión de 11 variables a 8 PC, con la perdida de explicabilidad que eso implica sobre las variables originales.
+
+### 9.1.1. Análisis PCA con 2 componentes (PC1 y PC2)
+
+Dibujamos los datos proyectados sobre las dos primeras componentes:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+ggplot(as.data.frame(prcomp(train[,-6], scale = T)$x[,1:2]), aes(x= PC1, y= PC2, label=rownames(train)))+
+  geom_point() +geom_text(hjust=0, vjust=0)
+
+``` 
+
+Tratamos de incorporar la información de las variables utilizando la técnica del "biplot":
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+ggbiplot(prcomp(train[,-6], labels=rownames(train), scale = T))
+
+```  
+
+* **Analizando la variable "quality" como numérica (variable continua):**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+ggbiplot(prcomp(train[,-6], scale = T),ellipse=TRUE,  labels=rownames(train), groups=train$quality)
+
+```   
+
+* **Analizando la variable "quality" como categórica (variable discreta):**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_fquality <- train %>% mutate(quality = as.factor(quality))
+                      
+ggbiplot(prcomp_train, obs.scale = 1, var.scale = 1, groups = train_fquality$quality, ellipse = TRUE, circle = TRUE) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+
+```   
+
+Vemos que el análisis con solo 2 componentes no es óptimo ya que por ellas mismas no explican un alto porcentaje de la varianza. Aún así, a nivel de análisis explicativo de los datos y de los posibles diferentes grupos, se intuye algún patrón ya que en principio cuanto más abajo del gráfico, mejor calificación tienen los vinos en general (puntos de colores azul y rosa son notas más cercanas a 7 y 8) y más arriba, peor calificación (puntos de colores verde, amarillo y rojo son notas de 5 para abajo).
+
+### 9.1.2. Análisis PCA con 4 componentes (PC1, PC2, PC3 y PC4)
+
+Realizamos una ampliación del análisis realizado utilizando las 4 primeras componentes principales para tratar de identificar posible agrupaciones más claras de los datos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+colores <- function(vec){
+# la función rainbow() devuelve un vector que contiene el número de colores distintos
+col <- rainbow(length(unique(vec)))
+return(col[as.numeric(as.factor(vec))])
+}
+
+par(mfrow = c(1,2))
+# Observaciones sobre PC1 y PC2
+plot(prcomp_train$x[,1:2], col = colores(train_fquality$quality), 
+     pch = 19, 
+     xlab = "PC1", 
+     ylab = "PC2")
+# Observaciones sobre PC1 y PC3
+plot(prcomp_train$x[,c(1, 3)], col = colores(train_fquality$quality), 
+     pch = 19, 
+     xlab = "PC1", 
+     ylab = "PC3")
+# Observaciones sobre PC1 y PC4
+plot(prcomp_train$x[,c(1, 4)], col = colores(train_fquality$quality), 
+     pch = 19, 
+     xlab = "PC1", 
+     ylab = "PC4")
+
+```  
+
+La utilización de más componentes (ampliando el análisis hasta la tercera y la cuarta PC) vemos que aporta muy poco y no vemos agrupaciones claras o destacables entre los diferentes grupos. Esto se debe que incluso utilizando las 4 dimensiones de las 4 primeras PC, apenas lograriamos explicar un 71.52% de la varianza de los datos.
+
+### 9.1.3. Análisis PCA con creación de variable categórica binarizada
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0").
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_pca <- train[, colnames(train)!="quality"]
+train_pca$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(train_pca)
+table(train_pca$nota_vino)
+train_pca
+
+``` 
+
+Pasamos a realizar el análisis de las Componentes Principales como se ha hecho con anterioridad:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+prcomp_train_2 <- prcomp(train_pca[,-12], centre = TRUE, scale = TRUE)
+prcomp_train_2
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+summary(prcomp_train_2)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+ggbiplot(prcomp_train_2, obs.scale = 1, var.scale = 1, groups = train_pca$nota_vino, ellipse = TRUE, circle = TRUE) +
+  scale_color_discrete(name = '') +
+  theme(legend.direction = 'horizontal', legend.position = 'top')
+
+``` 
+
+Vemos que los resultados obtenidos son los mismos, no obteniendo ninguna mejora. Con esta forma de mostrar los datos realizamos una visualización más clara de lo que nos referiamos.Los puntos más abajo del gráfico se corresponden en general a vinos "aprobados" (puntos de color rosado - vinos con nota igual o superior a 6) y los de más arriba se referencian en general a vinos "suspensos" (puntos de color azulado - vino con notas inferiores a 6). Fuera de eso, y con tan solo un 47.10% de la varianza explicada por las 2 primeras PC, no se aprecian más patrones o conclusiones en los datos.
+
+
+## 9.2. t-SNE - t-distributed stochastic neighbor embedding
+
+Intentamos realizar una reducción de la dimensión pero esta vez con métodos, al contrario de PCA, que no sean lineales. Con el algoritmo de t-SNE podemos separar datos que no sean separables de una forma lineal con exclusivamente una línea recta, es decir, nos puede llegar a permitir trabajar con datos lineales no separables. Nos puede servir para llegar a entender datos que tienen una alta dimensión projectándolo a una dimensión menor de solo 2 o 3 espacios o dimensiones.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+tsne_train <- (train[,-6])
+tsne_train
+
+```
+
+El algoritmo crea una probabilidad de distribución que representa las similaridades entre los vecinos para así tratar de agruparlos, reduciendo la dimensión.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(3)
+tsne_data <- tsne_train[ ,1:11]
+  
+tsne <- Rtsne(tsne_data, check_duplicates = FALSE, perplexity=30, pca = FALSE, theta=0.5, dims=2, max_iter = 500, eta=200, epoch=1000)
+
+par(mfrow=c(1,2))
+plot(tsne$Y, col = "black", bg=train_fquality$quality , pch = 21, cex = 1.5, main="tSNE", xlab="tSNE dimension 1", ylab="tSNE dimension 2")
+
+``` 
+
+Como vemos los resultados, como en PCA, no son satisfactorios, siendo no deseable la apliclación de estas técnicas en nuestro dataset.
+
+### 9.2.1. Análisis t-SNE con creación de variable categórica binarizada
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0").
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_tsne <- train[, colnames(train)!="quality"]
+train_tsne$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(train_tsne)
+table(train_tsne$nota_vino)
+train_tsne
+
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(3)
+tsne_data_2 <- train_tsne[ ,1:11]
+  
+tsne_2 <- Rtsne(tsne_data_2, check_duplicates = FALSE, perplexity=30, pca = FALSE, theta=0.5, dims=2, max_iter = 500, eta=200, epoch=1000)
+
+par(mfrow=c(1,2))
+plot(tsne$Y, col = "black", bg=train_tsne$nota_vino , pch = 21, cex = 1.5, main="tSNE", xlab="tSNE dimension 1", ylab="tSNE dimension 2")
+
+``` 
+
+Binarizando la variable respuesta tampoco sacamos demasiado en claro, no siendo posible aplicar una reducción de la dimensión sobre nuestros datos.
+
+# 10. Aprendizaje supervisado
+
+## 10.1. GLM - Generalized Lineal Model
+
+### 10.1.1. Creación de variable binaria y análisis de relaciones entre variables
+
+Lo primero de todo, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0")
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_glm <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_glm
+
+table(train_glm$nota_vino)
+
+str(train_glm)
+
+```     
+
+Realizando esta distinción entre vinos "Aprobados" y "Suspensos", vemos que la distibución entre ambos grupos está bastante balanceada, con 597 suspensos y 682 aprobados en los datos de train.
+
+Tras ello, pasamos a ver las correlaciones y el comportamiento de las variables con esta nueva variable categórica creada:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+c <- cor(train_glm)
+corrplot(c)
+
+```  
+
+Mostramos las correlaciones de forma numérica:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+round(c, 2)
+
+```
+
+Analizamos de forma bivariante las variables:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# nota_vino vs alcohol
+train_glm %>% ggplot(aes(x=alcohol, fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs Log_sulphates 
+train_glm %>% ggplot(aes(x=Log_sulphates , fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs volatile_acidity
+train_glm %>% ggplot(aes(x=volatile_acidity, fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs density
+train_glm %>% ggplot(aes(x=density, fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+               
+# nota_vino vs citric_acid
+train_glm %>% ggplot(aes(x=citric_acid, fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs Log_total_sulfur_dioxide 
+train_glm %>% ggplot(aes(x=Log_total_sulfur_dioxide , fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+```  
+
+En términos generales vemos como los vinos analizados que estan en la categoria de aprobados, tienen un mayor valor de "alcohol", levenmente mayor valor de "Log_sulphates", menor valor de "volatile_acidity", levemente menor "density", mayor "citric_acid" y menor valor de "Log_total_sulfur_dioxide".
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+# nota_vino vs fixed_acidity
+train_glm %>% ggplot(aes(x=fixed_acidity, fill=factor(nota_vino))) +
+  geom_density(alpha=0.5) 
+
+# nota_vino vs Log_free_sulfur_dioxide 
+train_glm %>% ggplot(aes(x=Log_free_sulfur_dioxide , fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs Log_residual_sugar 
+train_glm %>% ggplot(aes(x=Log_residual_sugar , fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs pH
+train_glm %>% ggplot(aes(x=pH, fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+# nota_vino vs Log_chlorides 
+train_glm %>% ggplot(aes(x=Log_chlorides , fill=factor(nota_vino))) +
+  geom_density(alpha=0.5)
+
+```  
+
+En los casos de las variables "Log_chlorides", "pH", "Log_residual_sugar", "Log_free_sulfur_dioxide" y "fixed_acidity", cuesta más distinguir en el gráfico de densidad entre vinos aprobados o suspensos, ya que no son características definitivas de un grupo u otro.
+
+### 10.1.2. Creación del modelo de Regresión Logística
+
+Generamos un modelo de regresión logística en base a las variables de nuestro dataset que sirva como predictor de la variable binaria creada.
+
+```{r, include=TRUE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+modelo_glm = glm(nota_vino ~ alcohol + fixed_acidity + volatile_acidity + citric_acid + Log_chlorides + 
+              Log_total_sulfur_dioxide + Log_free_sulfur_dioxide + density + pH + Log_sulphates , data = train_glm, family = binomial)
+
+modelo_glm
+
+summary(modelo_glm)
+
+```  
+
+Como observamos, nos quedamos solo con las variables significativas que relamente afectan a "nota_vino", y creamos un nuevo modelo exclusivamente con ellas ("Log_sulphates", "Log_total_sulfur_dioxide", "volatile_acidity" y "alcohol"). De esta forma simplificamos el modelo, nos quedamos con las varibales realmente importantes para el modelo predictor y creamos el mejor modelo de regresión logística posible para nuestro conjunto de datos.
+
+```{r, include=TRUE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+modelo_glm2 = glm(nota_vino ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide , data = train_glm, family = binomial)
+
+modelo_glm2
+
+summary(modelo_glm2)
+
+```  
+
+Para realizar la interpretación de los coeficientes:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+round(exp(cbind(Estimate = coef(modelo_glm2), confint(modelo_glm2))),2)
+
+``` 
+
+Los intervalos de confianza no se basan en un test de Wald (como en regresión tradicional), sino en un perfilado (profiling) de la log-likelihood, que es más preciso.
+
+Predicción de valores del modelo:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+head(predict(modelo_glm2))
+
+``` 
+
+Probabilidad en escala de la salida:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+head(predict(modelo_glm2, type = "response"))
+
+``` 
+
+Evaluación del rendimiento predictivo del modelo GLM presentado con las datos de train:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_glm$y_pred_probs <- predict(modelo_glm2, train_glm, type="response")
+train_glm$y_pred <- ifelse(train_glm$y_pred_probs > 0.5, 1, 0)
+
+
+#train_glm$y_pred_probs
+#train_glm$y_pred
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train <- confusionMatrix(as.factor(train_glm$y_pred), as.factor(train_glm$nota_vino), positive='1')
+cm_train$table
+#result
+cm_train$overall['Accuracy'] %>% round(2)
+cm_train$byClass['Recall'] %>% round(2)
+cm_train$byClass['Precision'] %>% round(2)
+
+``` 
+
+Viendo el valor de las metricas obtenidas, el valor de Accuracy (número de predicciones correctas/número total de predicciones) se situa en el 75%, el de Precision (positivos verdaderos/(positivos verdaderos + falsos positivos)) se situa en un 77%, y el de Recall o Sensitividad (positivos verdaderos/(positivos verdaderos/falsos negativos)) en un 75%.
+
+Con estos datos entendemos que con el modelo desarrollado, en alrededor del 75% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
+
+
+### 10.1.3. GLM - Cross Validation, Hiperparámetros y Evaluación del modelo
+
+Tratamos de aplicar Cross Validation sobre el modelo de GLM y realizar una selección de hiperparámetros:
+
+Vemos primero cuales son las posibles variables que tienes el modelo para tratar de configurar. Cómo se puede ver, el modelo GLM no tiene la posibilidad de ajustar hiperparámetros.
+
+```{r}
+## https://machinelearningmastery.com/how-to-estimate-model-accuracy-in-r-using-the-caret-package/?msclkid=37e9f222aa8711ec9c857e7c4b89d202
+## https://daviddalpiaz.github.io/r4sl/the-caret-package.html#classification
+
+# Vemos hiperparámetros que se pueden configurar
+
+modelLookup("glm")
+
+```
+
+Creamos el modelo con las variables seleccionadas como relevantes y haciendo Cross Validation on 5 particiones del dateset de train.
+
+```{r}
+caret.glm <- train(as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, 
+                   method = "glm",
+                   family = "binomial",
+                   data = train_glm,
+                   trControl = trainControl(method = "cv", number = 5))
+caret.glm
+summary(caret.glm)
+
+```
+
+
+Con estos datos entendemos que con el modelo desarrollado, en alrededor del 74.90% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
+
+```{r}
+confusionMatrix(caret.glm)
+
+```
+
+Evaluación del rendimiento predictivo del modelo GLM presentado con las datos de train:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_glm$y_pred_probs2 <- predict(caret.glm, train_glm, type="prob")
+train_glm$y_pred2 <- ifelse(train_glm$y_pred_probs2 > 0.5, 1, 0)
+
+#train_glm$y_pred_probs2
+t#rain_glm$y_pred2
+
+#plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2))
+
+``` 
+
+Reproducimos la curva ROC sobre el modelo final de GLM obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+glm_roc <- plot.roc(train_glm$nota_vino, train_glm$y_pred_probs)
+table(pred = train_glm$y_pred_probs > 0.5, obs = train_glm$nota_vino)
+
+auc(glm_roc)
+
+``` 
+
+## 10.2. KNN - K Nearest Neighbors
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_knn <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_knn
+
+table(train_knn$nota_vino)
+
+str(train_knn)
+
+```     
+
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+#REFERENCIA:https://www.edureka.co/blog/knn-algorithm-in-r/
+
+#train_knn <- train[, colnames(train) != "quality"]
+#train_knn$nota_vino <- factor(train$quality < 6, labels = c("aprobado","suspenso"))  # levels = c('FALSE', 'TRUE')
+#train_knn
+#table(train_knn$nota_vino)
+
+#str(train_knn)
+
+```     
+
+Lo primero de todo calculamos el número de observaciones que tiene nuestro dataset en train. Queremos así ver de inicio el número de "K" o vecinos con el que cuenta nuestro conjunto de datos de entrenamiento, para posteriormente y en base a ello optener el óptimo valor de "K".
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+NROW <- NROW(train_knn)
+NROW
+
+``` 
+
+Para obtener el valor óptimo aproximado de "K" realizamos la raiz cuadrada del número total de observaciones del dataset de train
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+sqrt(1279)
+
+``` 
+
+### 10.2.1. Optimización del valor de vecinos "K"
+
+Para trataer de mejorar las medidas de precisión del modelo KNN realizaremos cross-validation:
+
+```{r}
+
+#set.seed(22222220)
+
+#train_knn_nor <- as.data.frame(scale(train_knn))
+
+#train_z <- train_knn_nor[1:1000,]
+#prueba_z <- train_knn_nor[1001:1279,]
+#entrenamiento_labels <- train_knn_nor[1:1000,12]
+
+#train_knn_labels <- train_knn[,12]
+
+
+#knn_cv <- knn.cv(train_knn_nor[,1:11], cl= as.factor(train_knn$nota_vino), k=35)
+#knn <- knn(train_z, prueba_z, cl= as.factor(entrenamiento_labels), k=35)
+
+#table(knn_cv, as.factor(train_knn$nota_vino))
+#table(knn, as.factor(train_knn$nota_vino))
+
+
+```
+
+```{r}
+#accuracy = sum(knn_cv == train_knn$nota_vino) /nrow(train_knn_nor)
+#error = 1-accuracy
+
+#accuracy
+
+```
+
+Ahora estamos actuando únicamente sobre datos de TRAIN y por tanto sí podemos emplear técnicas para optimizar el resultado. Siempre cuidando de no caer en el error del sobreajuste.
+
+```{r}
+
+#long = 50
+#accuracy = rep(0,long)
+#f1score = rep(0,long)
+#recall = rep(0,long)
+#precision = rep(0,long)
+#for (i in 1:long)
+#{
+#  knn_cv = knn.cv(train_knn_nor[,1:11], k=i, cl=train_knn$nota_vino)
+#  accuracy[i] = sum(knn_cv == train_knn$nota_vino) /nrow(train_knn_nor)
+#  recall[i] = sum(knn_cv == train_knn$nota_vino & train_knn$nota_vino == TRUE) / sum(train_knn$nota_vino #== TRUE)
+#  precision[i] = sum(knn_cv == train_knn$nota_vino & knn_cv == TRUE) / sum(knn_cv == TRUE)
+#  f1score[i] = 2*precision[i]*recall[i]/(precision[i]+recall[i])
+#}
+#resultados_knn = as.data.frame(cbind(accuracy,f1score,precision,recall))
+#resultados_knn = resultados_knn %>% mutate(index=as.factor(seq(1:long)))
+
+#max(resultados_knn$accuracy)
+```
+
+```{r}
+#which.max(resultados_knn$accuracy)
+
+```
+
+
+```{r}
+#ggplot(data=resultados_knn,aes(x=index,y=accuracy)) + 
+#  geom_col(colour="cyan4",fill="cyan3")+
+#  ggtitle("Accuracy")
+```
+
+A la vista del gráfico podemos elegir 1 como el número de vecinos óptimo en TRAIN.
+
+```{r}
+
+#prediccion_knn1_train =knn.cv(train_knn_nor[,1:11], 
+#                              k=65, cl=train_knn$nota_vino)
+#confusionMatrix(table(prediccion_knn1_train,train_knn$nota_vino), positive="1")
+
+```
+
+
+Con caret:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+modelLookup("knn")
+
+```  
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(22222220)
+
+default_knn_mod = train(
+  nota_vino ~ .,
+  data = train_knn,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5),
+  preProcess = c("center", "scale"),
+  tuneGrid = expand.grid(k = seq(1, 101, by = 2))
+)
+
+default_knn_mod
+summary(default_knn_mod)
+
+plot(default_knn_mod)
+
+default_knn_mod$bestTune
+
+```   
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(default_knn_mod)
+
+```   
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+#predict(default_knn_mod, newdata = train_knn, type = "prob")
+```  
+
+## 10.3. DECISION TREE
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_tree <- train[, colnames(train)!="quality"]
+train_tree$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
+train_tree
+str(train_tree)
+
+```     
+
+
+
+```{r}
+# árbol de clasificación con las opciones por defecto (cp = 0.01 y split = "gini") con el comando:
+tree = rpart(nota_vino ~ ., data = train_tree, cp=0.006)
+rpart.plot(tree, nn = TRUE, extra = 104,  box.palette = "GnBu", branch.lty = 3, shadow.col = "gray")
+tree
+
+```
+
+Analizamos los resultados obtenidos de forma numérica:
+
+```{r}
+rpart.rules(tree, style = "tall")
+
+```
+
+Realizamos la valoración para una posible poda del modelo que permita simplificarlo y hacerlo más explicativo sin perder capacidad predictora.
+Para ello vemos el CP o "Parámetro de complejidad" con el cual buscamos el árbol menos profundo que además minimice la tasa de error.
+
+```{r}
+plotcp(tree) #CP - PARÁMETRO DE COMPLEJIDAD: Buscamos el árbol menos profundo que además minimiza la tasa de error
+printcp(tree)
+
+```
+
+Finalmente decimos proceder a realizar la poda y crear un modelo alternativo más simplificado:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+xerror <- tree$cptable[,"xerror"]
+imin.xerror <- which.min(xerror)
+upper.xerror <- xerror[imin.xerror] + tree$cptable[imin.xerror, "xstd"]
+icp <- min(which(xerror <= upper.xerror))
+cp <- tree$cptable[icp, "CP"]
+cp
+tree_2 <- prune(tree, cp = cp)
+# tree
+# summary(tree)
+# caret::varImp(tree)
+# importance <- tree$variable.importance
+# importance <- round(100*importance/sum(importance), 1)
+# importance[importance >= 1]
+rpart.plot(tree_2, nn = TRUE, extra = 104,  box.palette = "GnBu", branch.lty = 3, shadow.col = "gray") #, main="Classification tree winetaste"
+
+```  
+
+### 10.3.1. Comprobación del árbol de decisión con datos de Test
+
+Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_tree <- test[, colnames(test)!="quality"]
+test_tree$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(test_tree)
+
+```  
+
+* **Modelo Decision Tree sin poda:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+obs <- test_tree$nota_vino
+head(predict(tree, newdata = test_tree))
+
+pred <- predict(tree, newdata = test_tree, type = "class")
+table(obs, pred)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+caret::confusionMatrix(pred, obs)
+
+```  
+
+Obtenemos un valor del 69.06% para la precisión del modelo, con el incoveniente de tener un modelo sin poda, demasiado complejo y que puede tender al sobreajuste.
+
+* **Modelo Decision Tree con poda:**
+```{r}
+obs2 <- test_tree$nota_vino
+head(predict(tree_2, newdata = test_tree))
+
+pred2 <- predict(tree_2, newdata = test_tree, type = "class")
+table(obs2, pred2)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+caret::confusionMatrix(pred2, obs2)
+
+``` 
+
+Aplicando la poda a nuestro árbol obtenemos un modelo mas limpio, simple, explicativo y generalizable a otro conjunto de datos, evitando el posible sobreajuste del modelo y solo reduciendo su capacidad predictora a un valor de precisión del 66.25%. Entendemos que este modelo podado será el óptimo en este caso.
+
+## 10.4. RANDOM FOREST
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_forest <- train[, colnames(train)!="quality"]
+train_forest$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
+train_forest
+str(train_forest)
+
+```     
+
+Creamos el modelo de bosque de árboles:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(4343)
+rf <-randomForest(train_forest$nota_vino~., data=train_forest, ntree=200, do.trace=T, importance=T)
+rf
+
+```  
+
+Examinamos la convergencia del error en las muestras:
+
+```{r}
+plot(rf,main="")
+legend("right", colnames(rf$err.rate), lty = 1:5, col = 1:6)
+
+```
+
+Vemos la relevancia de las variables en el modelo (vemos que la variable clave que más afecta al accuracy del modelo es "alcohol")
+
+```{r}
+varImpPlot(rf)
+
+```
+
+Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_forest <- test[, colnames(test)!="quality"]
+test_forest$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(test_forest)
+
+```  
+
+Realizamos la predicción sobre los datos de test:
+
+```{r}
+pred2222<-predict(rf, newdata=test_forest, type="class")
+confusionMatrix(pred2222, test_forest$nota_vino)
+
+```
+
+Conseguimos un accuracy del 76.25% en test.
+
+
+## 10.5. MÉTODOS DE ENSAMBLE
+
+### 10.5.1. ADABoost - Boosted Classification Tree 
+
+https://rubenfcasal.github.io/aprendizaje_estadistico/boosting-en-r.html
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_en <- train[, colnames(train)!="quality"]
+train_en$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(train_en)
+
+```    
+
+Creamos el modelo de boosting con una configuración inicial de parámetros:
+
+```{r}
+ada.boost <- ada(nota_vino ~ ., data = train_en, type = "real",
+             control = rpart.control(maxdepth = 2, cp = 0, minsplit = 10, xval = 0),
+             iter = 150, nu = 0.05)
+ada.boost
+
+```
+
+Vemos la evolución decreciente del error al aumentar el número de iteraciones en el modelo
+
+```{r}
+plot(ada.boost)
+
+```
+
+Evaluamos la precisión del modelo en la muestra de test:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_en <- test[, colnames(test)!="quality"]
+test_en$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(test_en)
+
+```  
+
+```{r}
+set.seed(123)
+pred_ada <- predict(ada.boost, newdata = test_en)
+caret::confusionMatrix(pred_ada, test_en$nota_vino, positive = "aprobado")
+
+```
+
+Con la configuración de parámetros realizada en el modelo ada de booting obtenemos un valor de accuracy del 70,31% para el caso de algoritmos de clasificación.
+
+
+Para optimizar los resultados del modelo creado, se puede realizar un ajuste de hiperparámetros:
+
+```{r}
+modelLookup("ada")
+
+```
+
+Vemos los parámetros de "iter", "maxdepth" y "nu" que tiene el modelo ada de boosting para árboles de decisión en problemas de clasificación.
+
+
+```{r}
+set.seed(123)
+caret.ada0 <- train(nota_vino ~ ., method = "ada", data = train_en,
+                   trControl = trainControl(method = "cv", number = 5))
+caret.ada0
+
+```
+
+Obtenemos una configuración óptima de los hiperparámetros del modelo en "iter" = 100, "maxdepth" = 2 y "nu" = 0.1.
+
+```{r}
+confusionMatrix(predict(caret.ada0, newdata = test_en), test_en$nota_vino, positive = "aprobado")
+
+```
+
+Con el modelo de base obtenemos un accuracy del 70.31% con los datos de test.
+
+Tratamos de añadir al modelo base la configuración de hiperparámetros óptima:
+
+```{r}
+set.seed(123)
+caret.ada1 <- train(nota_vino ~ ., method = "ada", data = train_en,
+                    tuneGrid = data.frame(iter =  100, maxdepth = 2, nu = c(0.1)),
+                   trControl = trainControl(method = "cv", number = 5))
+caret.ada1
+
+```
+
+Conseguimos un accuracy del 76.31% en train.
+
+```{r}
+confusionMatrix(predict(caret.ada1, newdata = test_en), test_en$nota_vino, positive = "aprobado")
+
+```
+
+Conseguimos un accuracy del 71.88% en test.
+
+### 10.5.2. XGBoost - Extreme Gradient Boosting
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_xgb <- train[, colnames(train)!="quality"]
+train_xgb$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(train_xgb)
+
+```    
+
+
+Para optimizar los resultados del modelo creado, se puede realizar un ajuste de hiperparámetros:
+
+```{r}
+modelLookup("xgbTree")
+
+```
+
+Creamos el modelo de boosting con una configuración inicial dada de parámetros:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(2)
+caret.xgb <- train(nota_vino ~ ., method = "xgbTree", data = train_xgb,
+                   trControl = trainControl(method = "cv", number = 5))
+caret.xgb
+
+```    
+
+Para optimizar los resultados del modelo creado, realizamos un ajuste de hiperparámetros con los valores obtenidos:
+
+```{r}
+caret.xgb$bestTune
+
+```
+ 
+Obtenemos una configuración óptima de los hiperparámetros del modelo en nrounds = 100, max_depth = 3, eta = 0.3, gamma = 0, colsample_bytree = 0.8, min_child_weight= 1 y subsample = 1.
+ 
+Vemos la relevancia de cada variable en el modelo:
+  
+```{r}
+varImp(caret.xgb)
+
+```
+
+Probamos el modelo de base con los datos de test:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_xgb <- test[, colnames(test)!="quality"]
+test_xgb$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+str(test_xgb)
+
+```  
+
+```{r}
+confusionMatrix(predict(caret.xgb, newdata = test_xgb), test_xgb$nota_vino)
+
+```
+
+Se obtiene un valor del accuracy en test de 71.56%
+
+Tratamos de añadir al modelo base la configuración de hiperparámetros óptima obtenida con anterioridad:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+set.seed(1)
+caret.xgb1 <- train(nota_vino ~ ., method = "xgbTree", data = train_xgb,
+                   tuneGrid = data.frame(nrounds = 100, max_depth = 3, eta = 0.3, gamma = 0, colsample_bytree = 0.8, min_child_weight
+ = 1, subsample = 1),
+                   trControl = trainControl(method = "cv", number = 5))
+caret.xgb1
+
+``` 
+
+Obtenemos un valor del accuracy con la configuración de parámetros óptima en train de 77.63%
+
+```{r}
+confusionMatrix(predict(caret.xgb1, newdata = test_xgb), test_xgb$nota_vino)
+
+```
+
+Obtenemos un valor del accuracy con la configuración de parámetros óptima en test de 73.44%.
+
+
+## 10.6. SVM Lineal - Support Vector Machines Lineal
+
+Utilizamos el paquete kernlab para crear nuestro algoritmo SVM y entrenamos nuestro modelo con la función train() del paquete carret.
+
+## 10.6.1. Creación de variable binaria
+
+En nuestro dataset de train y test, hemos creado la variable binaria “nota_vino”para que, en función de “quality,nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
+
+```{r}
+train_svm <- train[, colnames(train)!="quality"]
+train_svm$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+train_svm
+```
+
+
+## 10.6.2. Creación del modelo SVM Lineal
+
+Creamos un modelo SVM Lineal con todos los predictores de nuestro data set.
+```{r}
+set.seed(13)
+
+modelo_svmlineal <- train(nota_vino ~ ., method = "svmLinear", data = train_svm)
+modelo_svmlineal$finalModel
+
+```
+
+Con el objeto finalModel podemos observar cuales son los hiperparámetros utilizados (cost C) y el error de entrenamiento. Este error se corresponde con el error que comete mi modelo al intentar predicir las mismas observaciones con las que se ha entrenado. 
+En nuestro caso tenemos un 24,44% de error.
+
+## 10.6.2. Evaluación del modelo SVM Lineal mediante Cross Validation
+
+Intentamos ajustar y evaluar nuestro modelo múltiples veces con distintos subconjuntos creados a partir de los datos de entrenamiento mediante Cross Validation, obteniendo para cada repetición una estimación del error.
+Cuando se aplican estos métodos, el coste computacional de ajustar múltiplas veces un modelo es alto y por eso con caret, podemos paralelizar el proceso para que sea más rápido.
+
+```{r}
+#paralelización
+
+registerDoMC(cores = 4)
+
+
+#número de repeticiones para realizar la validación cruzada
+
+particiones  <- 10
+repeticiones <- 5
+
+
+
+#modelo
+
+control_modelosvm_lineal <- trainControl(method = "repeatedcv", number = particiones,repeats = repeticiones,returnResamp = "all", verboseIter = FALSE,allowParallel = TRUE)
+
+
+set.seed(342)
+modelo_svmlineal <- train(nota_vino ~ ., data = train_svm,
+                          method = "svmLinear",
+                          metric = "Accuracy",
+                          trControl = control_modelosvm_lineal)
+modelo_svmlineal
+
+
+```
+Con esta validación cruzada con 10 particiones y 5 repeticiones hemos ajustado nuestro modelo 50 veces. Podemos pintar una gráfica con el accuracy obtenido en cada uno de estos modelos.
+
+```{r}
+grafo1 <- ggplot(data = modelo_svmlineal$resample, aes(x = Accuracy)) + geom_density(alpha = 0.5, fill = "blue") +geom_vline(xintercept = mean(modelo_svmlineal$resample$Accuracy),linetype = "dashed") + theme_bw() 
+grafo2 <- ggplot(data = modelo_svmlineal$resample, aes(x = 1, y = Accuracy)) +geom_boxplot(outlier.shape = NA, alpha = 0.5, fill = "blue") +
+      geom_jitter(width = 0.05) +labs(x = "") +theme_bw() + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+final_plot_svm <- ggarrange(grafo1, grafo2)
+final_plot_svm <- annotate_figure(final_plot_svm,top = text_grob("Accuracy obtenido en la validación", size = 15))
+final_plot_svm
+
+```
+Con validación cruzada llegamos a un accuracy promedio de 0.7513. Eso es lo mismo que decir que, mi modelo SVM Lineal predice si un vino es bueno o malo 75% de las veces.
+
+
+## 10.6.3 Optmización de hiperparámetros modelo SVM Lineal
+
+Como hemos visto, nuestro modelo svmLinear tiene un hiperparámetro llamado coste (C).
+volveremos a ajustar nuestro modelo con diferentes modelos de C y aplicamos validación cruzada otra vez, para volver a identificar en cuál de los submodelos se obtiene el mejor resultado.
+
+Para los diferentes valores de C, hemos elegido trabajar con grid search donde se especifican los valores exactos de los hiperparámetros.
+
+```{r}
+
+#paralelización
+
+registerDoMC(cores = 4)
+
+#hiperparámetros y número de repeticiones
+particiones  <- 10
+repeticiones <- 5
+
+hiperparametros <- data.frame(C = c(0.001, 0.01, 0.1, 0.5, 1, 10))
+
+
+#modelo
+control_modelosvm_lineal <- trainControl(method = "repeatedcv", number = particiones,repeats = repeticiones,returnResamp = "all", verboseIter =FALSE,allowParallel = TRUE)
+
+
+set.seed(342)
+modelo_svmlineal <- train(nota_vino ~ ., data = train_svm,method = "svmLinear",tuneGrid = hiperparametros,metric = "Accuracy",trControl =control_modelosvm_lineal)
+modelo_svmlineal
+
+```
+Podemos observar que en nuestro caso de todos los valores de C utilizados, C=0.01 es lo que nos devuelve los mejores resultados con un accuracy de 0.7526.
+
+Observamos la variación la variación de nuestros accuracy para cada uno de los valores de C en el grafo abajo.
+
+```{r}
+ggplot(data = modelo_svmlineal$resample,aes(x = as.factor(C), y = Accuracy, color = as.factor(C))) +geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  geom_jitter(width = 0.2, alpha = 0.6) + geom_hline(yintercept = 0.62, linetype = "dashed") +labs(x = "C") + theme_bw() + theme(legend.position = "none")
+```
+También podemos observar la evolución de los modelos según los valores de hiperparámetros que hemos elegido.
+
+```{r}
+ggplot(modelo_svmlineal, highlight = TRUE) +labs(title = "Evolución accuracy en función de C") +  theme_bw()
+```
+
+
+# 11. Aprendizaje no supervisado
+
+## 11.1. K-MEANS
+
+Quitamos la variable respuesta "quality":
+
+```{r}
+train_kmeans <- train[, -6]
+train_kmeans
+
+```
+
+Buscamos el valor óptimo de cluster a tener en nuestro modelo:
+
+```{r}
+fviz_nbclust(train_kmeans, kmeans, method = "wss")
+
+```
+
+Otra forma de buscar el óptimo:
+
+```{r, warning =FALSE}
+#calculate gap statistic based on number of clusters
+gap_stat <- clusGap(train_kmeans,
+                    FUN = kmeans,
+                    nstart = 25,
+                    K.max = 10,
+                    B = 50)
+
+#plot number of clusters vs. gap statistic
+fviz_gap_stat(gap_stat)
+
+```
+
+Desarrollamos el Clustering con K-means con el número óptimo de K:
+
+```{r}
+#make this example reproducible
+set.seed(666)
+
+km <- kmeans(train_kmeans, centers = 3, nstart = 25)
+
+#view results
+km
+
+```
+
+Graficamos los resultados obtenidos:
+
+```{r}
+fviz_cluster(km, data = train_kmeans, geom = "point")
+
+```
+
+Vemos la media de los valores para cada uno de los diferentes clusters y su tamaño:
+
+```{r}
+aggregate(train_kmeans, by=list(cluster=km$cluster), mean)
+km$size
+
+```
+
+```{r}
+table(km$cluster, train$quality)
+
+```
+
+
+```{r}
+wholesaleBest = FitKMeans(train_kmeans, max.clusters = 10, nstart = 25, seed = 666)
+wholesaleBest
+
+PlotHartigan(wholesaleBest)
+
+```
+
+## 11.2. Clustering Jerárquico
+## 11.3. DBSCAN/HDBSCAN
+## 11.4. Mixture of gaussians
+## 11.5. Spectral clustering
+
+# 12. GAM - Generalised Additive Model
+
+## 12.1. Con Linear GAM
+
+¿Será con variable respuesta continua?
+```{r}
+gam_mod <- gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
+    s(Log_chlorides) + s(pH) + s(Log_total_sulfur_dioxide) + s(citric_acid) + 
+    s(fixed_acidity), data = train, method = "REML")
+gam_mod
+
+coef(gam_mod)
+
+summary(gam_mod)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+gam_mod2 = gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates), data = train, method = "REML")
+
+summary(gam_mod2)
+
+```  
+
+```{r}
+plot(gam_mod2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue")
+
+```
+
+```{r}
+gam.check(gam_mod2)
+
+```
+
+## 12.2. Con Logistic GAM
+
+https://noamross.github.io/gams-in-r-course/chapter4
+
+Lo primero de todo, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0")
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_gam <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_gam
+
+table(train_gam$nota_vino)
+
+```  
+
+Para aplicar GAM logstico a nuestro problema, utilizamos el paquete mgcv y la familia=binomial que indica a la función GAM que nuestra variable respuesta será 0 o 1, es decir, vino bueno o vino malo. Las variables están envueltas por la función s, que es una función que espeficia que queremos que la relación sea flexible.
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+gam_mod_log = gam(nota_vino ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
+    s(Log_chlorides) + s(pH) + s(Log_total_sulfur_dioxide) + s(citric_acid) + 
+    s(fixed_acidity) , data = train_gam, method = "REML", family = binomial)
+
+summary(gam_mod_log)
+
+```  
+Nos quedamos solo con las variables más significativas (tres ***).
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+gam_mod_log2 = gam(nota_vino ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
+    s(Log_total_sulfur_dioxide), data = train_gam, method = "REML", family = binomial)
+
+summary(gam_mod_log2)
+
+```  
+Nuestro intercept es de 0.26735 y utilizamos la función plogis() para transformar nuestro intercept en una probabilidad. 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+plogis(0.26773)
+plogis(coef(gam_mod_log2)[1])
+
+```  
+Este valor significa que nuestro modelo predice una probabilidad inicial de aproximadamente 57% de un vino ser bueno.
+
+```{r}
+plot(gam_mod_log2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue", trans = plogis, shift = coef(gam_mod_log2)[1], 
+     seWithMean = TRUE, col = "purple")
+
+```
+
+```{r}
+#predict(gam_mod_log2, type="response", se.fit = TRUE)
+#plogis(predict(gam_mod_log2, type="link"))
+
+```
+
+Probar en test?¿
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_gam <- test %>% mutate(nota_vino = case_when(quality >= 6 ~ 1, TRUE ~ 0)) %>% mutate (quality= NULL)
+
+test_gam
+
+table(test_gam$nota_vino)
+
+```   
+
+Explicando los predictores
+```{r}
+head(predict(gam_mod_log2, type = "terms"))
+
+```
+
+```{r}
+predict(gam_mod_log2, type = "terms")[1, ]
+
+```
+
+
+```{r}
+plogis(sum(predict(gam_mod_log2, type = "terms")) + coef(gam_mod_log2)[1])
+
+```
+
+## 12.2.1. Logistic GAM con datos de test
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+gam_mod_log2_test = gam(nota_vino ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
+    s(Log_total_sulfur_dioxide), data = test_gam, method = "REML", family = binomial)
+
+summary(gam_mod_log2_test)
+
+```  
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+plogis(coef(gam_mod_log2_test)[1])
+
+```  
+
+```{r}
+plot(gam_mod_log2_test, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue", trans = plogis, shift = coef(gam_mod_log2_test)[1], 
+     seWithMean = TRUE, col = "purple")
+
+``` 
+
+
+# 13. Conclusiones generales del estudio
+
+* **Regresión Lineal Mútiple:** Vemos una falta de adecuación y ajuste del modelo de regresión lineal múltiple obtenido. Se observa un modelo con unos residuos que presentan heterocedasticidad (varianza no constante en el modelo - se viola la homocedasticidad) y que además no predice de forma adecuada la variable respuesta o dependiente, en base a las variables explicativas o independientes. Al tener una variable dependiente como "quality" que es discreta, un modelo de regresión linela normal no se ajusta a nuestros datos.
+
+* **Reducción de la Dimensionalidad (PCA y t-SNE):**
+
+* **Regresión Logística:** 
+
+* **KNN:**
+
+* **Decision Tree:**
+
+* **Métodos de Ensamble:**
+
+* **Random Forest:**
+
+* **Ajuste de Hiperparámetros:**
+
+* **Clustering (K-means. Jerárquico y HDBSCAN):**
+
+* **GAM:**
+
