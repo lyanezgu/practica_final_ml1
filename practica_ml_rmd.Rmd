@@ -1210,7 +1210,7 @@ modelLookup("glm")
 
 ```
 
-Creamos el modelo con las variables seleccionadas como relevantes y haciendo Cross Validation on 5 particiones del dateset de train.
+Creamos el modelo con las variables seleccionadas como relevantes y haciendo Cross Validation on 5 particiones del dataset de train.
 
 ```{r}
 caret.glm <- train(as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, 
@@ -1224,7 +1224,7 @@ summary(caret.glm)
 ```
 
 
-Con estos datos entendemos que con el modelo desarrollado, en alrededor del 74.90% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
+Con estos datos entendemos que con el modelo desarrollado, en alrededor del 74/75% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
 
 ```{r}
 confusionMatrix(caret.glm)
@@ -1258,10 +1258,12 @@ cm_train2$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de GLM obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-rocc <- plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2))
-auc(rocc)
+roc_glm <- plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2))
+auc(roc_glm)
 
 ``` 
+
+Se obtiene alrededor de un 82% de área bajo la curva.
 
 ## 10.2. KNN - K Nearest Neighbors
 
@@ -1292,7 +1294,7 @@ str(train_knn)
 
 ```     
 
-Lo primero de todo calculamos el número de observaciones que tiene nuestro dataset en train. Queremos así ver de inicio el número de "K" o vecinos con el que cuenta nuestro conjunto de datos de entrenamiento, para posteriormente y en base a ello optener el óptimo valor de "K".
+Lo primero de todo calculamos el número de observaciones que tiene nuestro dataset en train. Queremos así ver de inicio el número de "K" o vecinos con el que cuenta nuestro conjunto de datos de entrenamiento, para posteriormente y en base a ello aproximar el óptimo valor de "K".
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 NROW <- NROW(train_knn)
@@ -1307,87 +1309,60 @@ sqrt(1279)
 
 ``` 
 
-### 10.2.1. Optimización del valor de vecinos "K"
+Probaremos con 35 y 36 vecinos como una primera aproximación del "k" óptimo en un modelo de knn.
 
-Para trataer de mejorar las medidas de precisión del modelo KNN realizaremos cross-validation:
+### 10.2.1. Creación del modelo de knn
+
+Para tratar de realizar el modelo de knn dividimos nuestros datos de train en train y validación:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+numero_total = nrow(train_knn)
+
+w_train = .7
+w_vali = .3
+
+indices = seq(1:numero_total) 
+
+indices_train = sample(1:numero_total, numero_total * w_train)
+indices_vali = sample(indices[-indices_train], numero_total * w_vali)
+
+k_train = train_knn[indices_train,]
+k_train
+k_vali = train_knn[indices_vali,]
+
+``` 
+
+Probamos un modelo simple de k vecinos con K = 35 y K = 36:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)} 
+knn_simple_35 <- knn(k_train[,1:11], k_vali[,1:11], k=35, cl=as.factor(k_train$nota_vino))
+knn_simple_36 <- knn(k_train[,1:11], k_vali[,1:11], k=36, cl=as.factor(k_train$nota_vino))
+
+table(knn_simple_35, as.factor(k_vali$nota_vino))
+table(knn_simple_36, as.factor(k_vali$nota_vino))
+
+``` 
 
 ```{r}
+accuracy_knn_simple_35 = sum(knn_simple_35== k_vali$nota_vino) /nrow(k_vali)
+accuracy_knn_simple_36 = sum(knn_simple_36== k_vali$nota_vino) /nrow(k_vali)
 
-#set.seed(22222220)
+error_knn_simple_35 = 1-accuracy_knn_simple_35
+error_knn_simple_36 = 1-accuracy_knn_simple_36
 
-#train_knn_nor <- as.data.frame(scale(train_knn))
-
-#train_z <- train_knn_nor[1:1000,]
-#prueba_z <- train_knn_nor[1001:1279,]
-#entrenamiento_labels <- train_knn_nor[1:1000,12]
-
-#train_knn_labels <- train_knn[,12]
-
-
-#knn_cv <- knn.cv(train_knn_nor[,1:11], cl= as.factor(train_knn$nota_vino), k=35)
-#knn <- knn(train_z, prueba_z, cl= as.factor(entrenamiento_labels), k=35)
-
-#table(knn_cv, as.factor(train_knn$nota_vino))
-#table(knn, as.factor(train_knn$nota_vino))
-
+accuracy_knn_simple_35
+error_knn_simple_35
+print("...........................")
+accuracy_knn_simple_36
+error_knn_simple_36
 
 ```
 
-```{r}
-#accuracy = sum(knn_cv == train_knn$nota_vino) /nrow(train_knn_nor)
-#error = 1-accuracy
+Vemos que en ambos casos los resultados son muy parecidos obteniendo un accuracy de entorno al 73/74% de precisión.
 
-#accuracy
+### 10.2.2. KNN - Cross Validation, Hiperparámetros y Evaluación del modelo
 
-```
-
-Ahora estamos actuando únicamente sobre datos de TRAIN y por tanto sí podemos emplear técnicas para optimizar el resultado. Siempre cuidando de no caer en el error del sobreajuste.
-
-```{r}
-
-#long = 50
-#accuracy = rep(0,long)
-#f1score = rep(0,long)
-#recall = rep(0,long)
-#precision = rep(0,long)
-#for (i in 1:long)
-#{
-#  knn_cv = knn.cv(train_knn_nor[,1:11], k=i, cl=train_knn$nota_vino)
-#  accuracy[i] = sum(knn_cv == train_knn$nota_vino) /nrow(train_knn_nor)
-#  recall[i] = sum(knn_cv == train_knn$nota_vino & train_knn$nota_vino == TRUE) / sum(train_knn$nota_vino #== TRUE)
-#  precision[i] = sum(knn_cv == train_knn$nota_vino & knn_cv == TRUE) / sum(knn_cv == TRUE)
-#  f1score[i] = 2*precision[i]*recall[i]/(precision[i]+recall[i])
-#}
-#resultados_knn = as.data.frame(cbind(accuracy,f1score,precision,recall))
-#resultados_knn = resultados_knn %>% mutate(index=as.factor(seq(1:long)))
-
-#max(resultados_knn$accuracy)
-```
-
-```{r}
-#which.max(resultados_knn$accuracy)
-
-```
-
-
-```{r}
-#ggplot(data=resultados_knn,aes(x=index,y=accuracy)) + 
-#  geom_col(colour="cyan4",fill="cyan3")+
-#  ggtitle("Accuracy")
-```
-
-A la vista del gráfico podemos elegir 1 como el número de vecinos óptimo en TRAIN.
-
-```{r}
-
-#prediccion_knn1_train =knn.cv(train_knn_nor[,1:11], 
-#                              k=65, cl=train_knn$nota_vino)
-#confusionMatrix(table(prediccion_knn1_train,train_knn$nota_vino), positive="1")
-
-```
-
-
-Con caret:
+Habiendo visto el modelo base, tratamos de ir un paso más allá creando otra versión que nos permita por un lado normalizar o estandarizar ls variables para tratarlas con una magnitud equivalente, ajustar de forma más precisa hiperparámetros a través de un número de "k" óptimo que venga dado realizando validación cruzada y evaluar un modelo para ver su precisión, robustez y generalización.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1395,28 +1370,32 @@ modelLookup("knn")
 
 ```  
 
+Vemos que el parámetro que podemos ajustar es el valor de "k" que son el número de vecinos más cercanos con los que compararemos las diferentes observaciones y realizaremos la clasificación teniendo en cuena la distancia euclídea entre los puntos.
+
+
+Tratamos de plantear un modelo de knn que incluya un proceso de validación cruzada de 5 folds, que centre y estándarice la escala de las variables, y que ajuste el hiperparámetro k de vecinos óptimo.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(22222220)
 
 default_knn_mod = train(
-  nota_vino ~ .,
+  as.factor(nota_vino) ~ .,
   data = train_knn,
   method = "knn",
   trControl = trainControl(method = "cv", number = 5),
   preProcess = c("center", "scale"),
   tuneGrid = expand.grid(k = seq(1, 101, by = 2))
 )
+tuneGrid = data.frame(iter =  100, maxdepth = 2, nu = c(0.1))
 
 default_knn_mod
 summary(default_knn_mod)
-
-plot(default_knn_mod)
 
 default_knn_mod$bestTune
 
 ```   
 
+Conseguimos un valor de k óptimo en 99 vecinos que nos da un accuracy del 76.09% mejorando los resultados obtenidos con anterioridad.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 get_best_result = function(caret_fit) {
@@ -1430,9 +1409,64 @@ get_best_result(default_knn_mod)
 
 ```   
 
+
+Implementamos el valor optimo de k (k=99) en el modelo:
+
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-#predict(default_knn_mod, newdata = train_knn, type = "prob")
+set.seed(22222220)
+
+caret.knn = train(
+  as.factor(nota_vino) ~ .,
+  data = train_knn,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 5),
+  preProcess = c("center", "scale"),
+  tuneGrid = data.frame(k = 99)
+)
+
+caret.knn
+summary(caret.knn)
+train_knn
+
+```   
+
+Con estos datos entendemos que con el modelo desarrollado, en alrededor del 76/77% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
+
+
+Evaluación del rendimiento predictivo del modelo GLM presentado con las datos de train:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_knn$y_pred_probs2 <- predict(caret.knn, newdata = train_knn, type = "prob")
+train_knn$y_pred_probs2 <- ifelse(train_knn$y_pred_probs2$`1` > 0.5, train_knn$y_pred_probs2$`1`, 1-train_knn$y_pred_probs2$`0`)
+
+train_knn$y_pred2 <- ifelse(train_knn$y_pred_probs2 > 0.5, 1, 0)
+
+#train_knn$y_pred_probs2
+#train_knn$y_pred2
+
 ```  
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de KNN obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_knn <- confusionMatrix(as.factor(train_knn$y_pred2), as.factor(train_knn$nota_vino), positive='1')
+cm_train_knn$table
+#result
+cm_train_knn$overall['Accuracy'] %>% round(2)
+cm_train_knn$byClass['Recall'] %>% round(2)
+cm_train_knn$byClass['Precision'] %>% round(2)
+
+```
+
+Reproducimos la curva ROC sobre el modelo final de KNN obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_knn <- plot.roc(as.numeric(train_knn$nota_vino), as.numeric(train_knn$y_pred_probs2))
+auc(roc_knn)
+
+``` 
+
+Se obtiene alrededor de un 82/83% de área bajo la curva.
 
 ## 10.3. DECISION TREE
 
@@ -1677,7 +1711,7 @@ Tratamos de añadir al modelo base la configuración de hiperparámetros óptima
 set.seed(123)
 caret.ada1 <- train(nota_vino ~ ., method = "ada", data = train_en,
                     tuneGrid = data.frame(iter =  100, maxdepth = 2, nu = c(0.1)),
-                   trControl = trainControl(method = "cv", number = 5))
+                    trControl = trainControl(method = "cv", number = 5))
 caret.ada1
 
 ```
