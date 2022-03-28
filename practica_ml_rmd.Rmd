@@ -1468,19 +1468,35 @@ Se obtiene alrededor de un 82/83% de área bajo la curva.
 
 En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
+
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-train_tree <- train[, colnames(train)!="quality"]
-train_tree$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
+
+
+
+#train_tree <- train[, colnames(train)!="quality"]
+#train_tree$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
+#train_tree
+#str(train_tree)
+
+``` 
+
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_tree <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
 train_tree
+
+table(train_tree$nota_vino)
+
 str(train_tree)
 
-```     
+``` 
 
 
 
 ```{r}
 # árbol de clasificación con las opciones por defecto (cp = 0.01 y split = "gini") con el comando:
-tree = rpart(nota_vino ~ ., data = train_tree, cp=0.006)
+tree = rpart(as.factor(nota_vino) ~ ., data = train_tree, cp=0.006)
 rpart.plot(tree, nn = TRUE, extra = 104,  box.palette = "GnBu", branch.lty = 3, shadow.col = "gray")
 tree
 
@@ -1522,6 +1538,76 @@ rpart.plot(tree_2, nn = TRUE, extra = 104,  box.palette = "GnBu", branch.lty = 3
 
 ```  
 
+### 10.2.2. Decision Tree - Cross Validation, Hiperparámetros y Evaluación del modelo
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+# Fit the model on the training set
+set.seed(123)
+tree_caret <- train(
+  as.factor(nota_vino) ~alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, data = train_tree, method = "rpart",
+  trControl = trainControl("cv", number = 5),
+  tuneLength = 50
+  )
+# Plot model accuracy vs different values of
+# cp (complexity parameter)
+plot(tree_caret)
+
+```  
+
+```{r}
+tree_caret
+tree_caret$bestTune
+
+```
+```{r}
+
+# Plot the final tree model
+par(xpd = NA) # Avoid clipping the text in some device
+plot(tree_caret$finalModel)
+text(tree_caret$finalModel,  digits = 3)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(tree_caret)
+
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+
+train_tree$y_pred_probs2 <- predict(tree_caret, newdata = train_tree, type = "prob")
+train_tree$y_pred_probs2 <- ifelse(train_tree$y_pred_probs2$`1` > 0.5, train_tree$y_pred_probs2$`1`, 1-train_tree$y_pred_probs2$`0`)
+
+train_tree$y_pred2 <- ifelse(train_tree$y_pred_probs2 > 0.5, 1, 0)
+
+#train_tree$y_pred_probs2
+#train_tree$y_pred2
+
+```  
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de KNN obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_tree <- confusionMatrix(as.factor(train_tree$y_pred2), as.factor(train_tree$nota_vino), positive='1')
+cm_train_tree$table
+#result
+cm_train_tree$overall['Accuracy'] %>% round(2)
+cm_train_tree$byClass['Recall'] %>% round(2)
+cm_train_tree$byClass['Precision'] %>% round(2)
+
+```
+
+
 ### 10.3.1. Comprobación del árbol de decisión con datos de Test
 
 Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
@@ -1544,7 +1630,7 @@ table(obs, pred)
 ```
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-caret::confusionMatrix(pred, obs)
+#caret::confusionMatrix(pred, obs)
 
 ```  
 
@@ -1561,7 +1647,7 @@ table(obs2, pred2)
 ```
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-caret::confusionMatrix(pred2, obs2)
+#caret::confusionMatrix(pred2, obs2)
 
 ``` 
 
