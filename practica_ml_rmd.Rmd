@@ -74,10 +74,8 @@ library(xgboost)
 library(randomForest)
 library(kernlab)
 library(pROC)
-install.packages("doMC", repos="http://R-Forge.R-project.org")
 library(doMC)
 library(ggpubr)
-
 
 ```
 
@@ -957,7 +955,7 @@ train_pca
 
 ``` 
 
-Pasamos a realizar el análisis de las Componentes Principales como se ha hecho con anterioridad:
+Pasamos a realizar el análisis de las Componentes Principales tal y como se ha hecho con anterioridad:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 prcomp_train_2 <- prcomp(train_pca[,-12], centre = TRUE, scale = TRUE)
@@ -1176,9 +1174,9 @@ Evaluación del rendimiento predictivo del modelo GLM presentado con las datos d
 train_glm$y_pred_probs <- predict(modelo_glm2, train_glm, type="response")
 train_glm$y_pred <- ifelse(train_glm$y_pred_probs > 0.5, 1, 0)
 
-
 #train_glm$y_pred_probs
 #train_glm$y_pred
+
 ``` 
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
@@ -1237,22 +1235,31 @@ Evaluación del rendimiento predictivo del modelo GLM presentado con las datos d
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_glm$y_pred_probs2 <- predict(caret.glm, train_glm, type="prob")
+train_glm$y_pred_probs2 <- ifelse(train_glm$y_pred_probs2$`1` > 0.5, train_glm$y_pred_probs2$`1`, 1-train_glm$y_pred_probs2$`0`)
 train_glm$y_pred2 <- ifelse(train_glm$y_pred_probs2 > 0.5, 1, 0)
 
 #train_glm$y_pred_probs2
-t#rain_glm$y_pred2
+#train_glm$y_pred2
 
-#plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2))
+``` 
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de GLM obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train2 <- confusionMatrix(as.factor(train_glm$y_pred2), as.factor(train_glm$nota_vino), positive='1')
+cm_train2$table
+#result
+cm_train2$overall['Accuracy'] %>% round(2)
+cm_train2$byClass['Recall'] %>% round(2)
+cm_train2$byClass['Precision'] %>% round(2)
 
 ``` 
 
 Reproducimos la curva ROC sobre el modelo final de GLM obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-glm_roc <- plot.roc(train_glm$nota_vino, train_glm$y_pred_probs)
-table(pred = train_glm$y_pred_probs > 0.5, obs = train_glm$nota_vino)
-
-auc(glm_roc)
+rocc <- plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2))
+auc(rocc)
 
 ``` 
 
