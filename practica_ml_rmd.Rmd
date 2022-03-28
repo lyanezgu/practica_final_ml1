@@ -1362,7 +1362,7 @@ Vemos que en ambos casos los resultados son muy parecidos obteniendo un accuracy
 
 ### 10.2.2. KNN - Cross Validation, Hiperparámetros y Evaluación del modelo
 
-Habiendo visto el modelo base, tratamos de ir un paso más allá creando otra versión que nos permita por un lado normalizar o estandarizar ls variables para tratarlas con una magnitud equivalente, ajustar de forma más precisa hiperparámetros a través de un número de "k" óptimo que venga dado realizando validación cruzada y evaluar un modelo para ver su precisión, robustez y generalización.
+Habiendo visto el modelo base, tratamos de ir un paso más allá creando otra versión que nos permita por un lado normalizar o estandarizar ls variables para tratarlas con una magnitud equivalente, ajustar de forma más precisa hiperparámetros a través de un número de "k" óptimo que venga dado realizando validación cruzada y evaluar un modelo para ver su precisión, robustez y capacidad de generalización.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1386,12 +1386,9 @@ default_knn_mod = train(
   preProcess = c("center", "scale"),
   tuneGrid = expand.grid(k = seq(1, 101, by = 2))
 )
-tuneGrid = data.frame(iter =  100, maxdepth = 2, nu = c(0.1))
 
 default_knn_mod
 summary(default_knn_mod)
-
-default_knn_mod$bestTune
 
 ```   
 
@@ -1426,14 +1423,13 @@ caret.knn = train(
 
 caret.knn
 summary(caret.knn)
-train_knn
 
 ```   
 
 Con estos datos entendemos que con el modelo desarrollado, en alrededor del 76/77% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
 
 
-Evaluación del rendimiento predictivo del modelo GLM presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo KNN presentado con las datos de train:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_knn$y_pred_probs2 <- predict(caret.knn, newdata = train_knn, type = "prob")
