@@ -1677,7 +1677,7 @@ str(train_forest)
 
 ```     
 
-Creamos el modelo de bosque de árboles:
+Creamos el modelo base de bosque de árboles:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(4343)
@@ -1703,11 +1703,15 @@ varImpPlot(rf)
 
 ### 10.4.1. RANDOM FOREST - Cross Validation, Hiperparámetros y Evaluación del modelo
 
+Vemos que el principal pa´rametro a configurar es el número de predictores al azar que toma el modelo.
+
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
 modelLookup("rf")
 
 ```
+
+Creamos un modelo aplicando la validación cruzada y ajustando hiperparámetros (mtry, número de árboles y el tamaño de los nodos para regular su profundidad) de tal forma que creemos un modelo robusto y generalizable. Tomamos como base las 4 variable de mayor relevancia que hemos observado:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1715,13 +1719,14 @@ modelLookup("rf")
 set.seed(12345)
 
 caret.rf <- train(
-  as.factor(nota_vino) ~ ., data = train_forest, 
+  as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, 
+  data = train_forest, 
   method = "rf",
   ntree = 200,
   importance=TRUE,
   metric = "Accuracy",
   trControl = trainControl("cv", number = 5, search = "grid"),
-  nodesize = 80,
+  nodesize = 50,
   tuneLength = 10
   )
 
