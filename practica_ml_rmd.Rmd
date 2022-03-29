@@ -1378,7 +1378,7 @@ Tratamos de plantear un modelo de knn que incluya un proceso de validación cruz
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(22222220)
 
-default_knn_mod = train(
+caret.knn = train(
   as.factor(nota_vino) ~ .,
   data = train_knn,
   method = "knn",
@@ -1387,8 +1387,8 @@ default_knn_mod = train(
   tuneGrid = expand.grid(k = seq(1, 101, by = 2))
 )
 
-default_knn_mod
-summary(default_knn_mod)
+caret.knn
+summary(caret.knn)
 
 ```   
 
@@ -1402,27 +1402,7 @@ get_best_result = function(caret_fit) {
   best_result
 }
 
-get_best_result(default_knn_mod)
-
-```   
-
-
-Implementamos el valor optimo de k (k=99) en el modelo:
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-set.seed(22222220)
-
-caret.knn = train(
-  as.factor(nota_vino) ~ .,
-  data = train_knn,
-  method = "knn",
-  trControl = trainControl(method = "cv", number = 5),
-  preProcess = c("center", "scale"),
-  tuneGrid = data.frame(k = 99)
-)
-
-caret.knn
-summary(caret.knn)
+get_best_result(caret.knn)
 
 ```   
 
@@ -1437,7 +1417,8 @@ train_knn$y_pred_probs2 <- ifelse(train_knn$y_pred_probs2$`1` > 0.5, train_knn$y
 
 train_knn$y_pred2 <- ifelse(train_knn$y_pred_probs2 > 0.5, 1, 0)
 
-#train_knn$y_pred_probs2
+train_knn$y_pred_probs2
+train_knn
 #train_knn$y_pred2
 
 ```  
@@ -1668,7 +1649,6 @@ str(train_forest)
 
 ``` 
 
-
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 #train_forest <- train[, colnames(train)!="quality"]
 #train_forest$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
@@ -1679,9 +1659,9 @@ str(train_forest)
 
 Creamos el modelo base de bosque de árboles:
 
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+```{r, include=TRUE, message=FALSE, include=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(4343)
-rf <-randomForest(as.factor(nota_vino)~., data=train_forest, ntree=200, do.trace=T, importance=T)
+rf <-randomForest(as.factor(nota_vino)~., data=train_forest, ntree=1000, do.trace=T, importance=T)
 rf
 
 ```  
@@ -1722,7 +1702,7 @@ caret.rf <- train(
   as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, 
   data = train_forest, 
   method = "rf",
-  ntree = 200,
+  ntree = 100,
   importance=TRUE,
   metric = "Accuracy",
   trControl = trainControl("cv", number = 5, search = "grid"),
@@ -1752,6 +1732,7 @@ get_best_result(caret.rf)
 
 ``` 
 
+
 Evaluación del rendimiento predictivo del modelo Random Forest presentado con las datos de train:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
@@ -1768,9 +1749,6 @@ train_forest
 ```  
 
 
-
-
-
 Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Random Forest obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
@@ -1783,14 +1761,13 @@ cm_train_forest$byClass['Precision'] %>% round(2)
 
 ```
 
-Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
+Reproducimos la curva ROC sobre el modelo final de Random Forest obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 roc_rf <- plot.roc(as.numeric(train_forest$nota_vino), as.numeric(train_forest$y_pred_probs2))
 auc(roc_rf)
 
 ``` 
-
 
 
 **Comprobación del modelo con los datos de test:**
@@ -1838,21 +1815,31 @@ cm_test_forest$byClass['Precision'] %>% round(2)
 
 ### 10.5.1. ADABoost - Boosted Classification Tree 
 
-https://rubenfcasal.github.io/aprendizaje_estadistico/boosting-en-r.html
-
 En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-train_en <- train[, colnames(train)!="quality"]
-train_en$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+#https://rubenfcasal.github.io/aprendizaje_estadistico/boosting-en-r.html
+
+train_en <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_en
+
+table(train_en$nota_vino)
+
 str(train_en)
+
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+#train_en <- train[, colnames(train)!="quality"]
+#train_en$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+#str(train_en)
 
 ```    
 
-Creamos el modelo de boosting con una configuración inicial de parámetros:
+Creamos el modelo de boosting con una configuración inicial básica de parámetros:
 
 ```{r}
-ada.boost <- ada(nota_vino ~ ., data = train_en, type = "real",
+ada.boost <- ada(as.factor(nota_vino) ~ ., data = train_en, type = "real",
              control = rpart.control(maxdepth = 2, cp = 0, minsplit = 10, xval = 0),
              iter = 150, nu = 0.05)
 ada.boost
@@ -1866,26 +1853,20 @@ plot(ada.boost)
 
 ```
 
-Evaluamos la precisión del modelo en la muestra de test:
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test_en <- test[, colnames(test)!="quality"]
-test_en$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
-str(test_en)
-
-```  
+Evaluamos la precisión del modelo en la muestra de train:
 
 ```{r}
 set.seed(123)
-pred_ada <- predict(ada.boost, newdata = test_en)
-caret::confusionMatrix(pred_ada, test_en$nota_vino, positive = "aprobado")
+pred_ada <- predict(ada.boost, newdata = train_en)
+caret::confusionMatrix(pred_ada, as.factor(train_en$nota_vino), positive = "1")
 
 ```
 
-Con la configuración de parámetros realizada en el modelo ada de booting obtenemos un valor de accuracy del 70,31% para el caso de algoritmos de clasificación.
+
+Con la configuración de parámetros realizada en el modelo ada de booting obtenemos un valor de accuracy del 78/79% para el caso de algoritmos de clasificación.
 
 
-Para optimizar los resultados del modelo creado, se puede realizar un ajuste de hiperparámetros:
+Para optimizar los resultados del modelo creado y la generalización del modelo, se puede realizar un ajuste de hiperparámetros y validación cruzada:
 
 ```{r}
 modelLookup("ada")
@@ -1897,54 +1878,96 @@ Vemos los parámetros de "iter", "maxdepth" y "nu" que tiene el modelo ada de bo
 
 ```{r}
 set.seed(123)
-caret.ada0 <- train(nota_vino ~ ., method = "ada", data = train_en,
+caret.ada <- train(as.factor(nota_vino) ~ ., method = "ada", data = train_en,
                    trControl = trainControl(method = "cv", number = 5))
-caret.ada0
+caret.ada
 
 ```
 
-Obtenemos una configuración óptima de los hiperparámetros del modelo en "iter" = 100, "maxdepth" = 2 y "nu" = 0.1.
+Obtenemos una configuración óptima de los hiperparámetros del modelo en "iter" = 100, "maxdepth" = 3 y "nu" = 0.1.
 
 ```{r}
-confusionMatrix(predict(caret.ada0, newdata = test_en), test_en$nota_vino, positive = "aprobado")
+caret.ada
+caret.ada$bestTune
 
 ```
 
-Con el modelo de base obtenemos un accuracy del 70.31% con los datos de test.
 
-Tratamos de añadir al modelo base la configuración de hiperparámetros óptima:
+Con el modelo de base obtenemos un accuracy del 80.3% con los datos de train.
 
-```{r}
-set.seed(123)
-caret.ada1 <- train(nota_vino ~ ., method = "ada", data = train_en,
-                    tuneGrid = data.frame(iter =  100, maxdepth = 2, nu = c(0.1)),
-                    trControl = trainControl(method = "cv", number = 5))
-caret.ada1
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(caret.ada)
+
+``` 
+
+
+Evaluación del rendimiento predictivo del modelo Ada Boost presentado con las datos de train:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+train_en$y_pred_probs2 <- predict(caret.ada, newdata = train_en, type = "prob")
+train_en$y_pred_probs2 <- ifelse(train_en$y_pred_probs2$`1` > 0.5, train_en$y_pred_probs2$`1`, 1-train_en$y_pred_probs2$`0`)
+
+train_en$y_pred2 <- ifelse(train_en$y_pred_probs2 > 0.5, 1, 0)
+
+#train_forest$y_pred_probs2
+train_en$y_pred2
+train_en
+
+```  
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Ada Boost obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_en <- confusionMatrix(as.factor(train_en$y_pred2), as.factor(train_en$nota_vino), positive='1')
+cm_train_en$table
+#result
+cm_train_en$overall['Accuracy'] %>% round(2)
+cm_train_en$byClass['Recall'] %>% round(2)
+cm_train_en$byClass['Precision'] %>% round(2)
 
 ```
 
-Conseguimos un accuracy del 76.31% en train.
+Reproducimos la curva ROC sobre el modelo final de Ada Boost obtenido:
 
-```{r}
-confusionMatrix(predict(caret.ada1, newdata = test_en), test_en$nota_vino, positive = "aprobado")
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_ada <- plot.roc(as.numeric(train_en$nota_vino), as.numeric(train_en$y_pred_probs2))
+auc(roc_ada)
 
 ```
 
-Conseguimos un accuracy del 71.88% en test.
 
 ### 10.5.2. XGBoost - Extreme Gradient Boosting
 
 En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-train_xgb <- train[, colnames(train)!="quality"]
-train_xgb$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+
+train_xgb <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_xgb
+
+table(train_xgb$nota_vino)
+
 str(train_xgb)
+
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+#train_xgb <- train[, colnames(train)!="quality"]
+#train_xgb$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+#str(train_xgb)
 
 ```    
 
 
-Para optimizar los resultados del modelo creado, se puede realizar un ajuste de hiperparámetros:
+Para optimizar los resultados del modelo creado, se puede realizar un ajuste de hiperparámetros con validación cruzada:
 
 ```{r}
 modelLookup("xgbTree")
@@ -1953,22 +1976,29 @@ modelLookup("xgbTree")
 
 Creamos el modelo de boosting con una configuración inicial dada de parámetros:
 
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+```{r, include=FALSE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(2)
-caret.xgb <- train(nota_vino ~ ., method = "xgbTree", data = train_xgb,
+caret.xgb <- train(as.factor(nota_vino) ~ ., 
+                   method = "xgbTree", 
+                   data = train_xgb,
                    trControl = trainControl(method = "cv", number = 5))
 caret.xgb
 
 ```    
-
-Para optimizar los resultados del modelo creado, realizamos un ajuste de hiperparámetros con los valores obtenidos:
-
-```{r}
-caret.xgb$bestTune
-
-```
  
-Obtenemos una configuración óptima de los hiperparámetros del modelo en nrounds = 100, max_depth = 3, eta = 0.3, gamma = 0, colsample_bytree = 0.8, min_child_weight= 1 y subsample = 1.
+Obtenemos una configuración óptima de los hiperparámetros del modelo en:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(caret.xgb)
+
+``` 
  
 Vemos la relevancia de cada variable en el modelo:
   
@@ -1977,42 +2007,40 @@ varImp(caret.xgb)
 
 ```
 
-Probamos el modelo de base con los datos de test:
+Evaluación del rendimiento predictivo del modelo Ada Boost presentado con las datos de train:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test_xgb <- test[, colnames(test)!="quality"]
-test_xgb$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
-str(test_xgb)
+
+train_xgb$y_pred_probs2 <- predict(caret.xgb, newdata = train_xgb, type = "prob")
+train_xgb$y_pred_probs2 <- ifelse(train_xgb$y_pred_probs2$`1` > 0.5, train_xgb$y_pred_probs2$`1`, 1-train_xgb$y_pred_probs2$`0`)
+
+train_xgb$y_pred2 <- ifelse(train_xgb$y_pred_probs2 > 0.5, 1, 0)
+
+#train_forest$y_pred_probs2
+train_xgb$y_pred2
+train_xgb
 
 ```  
 
-```{r}
-confusionMatrix(predict(caret.xgb, newdata = test_xgb), test_xgb$nota_vino)
-
-```
-
-Se obtiene un valor del accuracy en test de 71.56%
-
-Tratamos de añadir al modelo base la configuración de hiperparámetros óptima obtenida con anterioridad:
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Ada Boost obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-set.seed(1)
-caret.xgb1 <- train(nota_vino ~ ., method = "xgbTree", data = train_xgb,
-                   tuneGrid = data.frame(nrounds = 100, max_depth = 3, eta = 0.3, gamma = 0, colsample_bytree = 0.8, min_child_weight
- = 1, subsample = 1),
-                   trControl = trainControl(method = "cv", number = 5))
-caret.xgb1
-
-``` 
-
-Obtenemos un valor del accuracy con la configuración de parámetros óptima en train de 77.63%
-
-```{r}
-confusionMatrix(predict(caret.xgb1, newdata = test_xgb), test_xgb$nota_vino)
+cm_train_xgb <- confusionMatrix(as.factor(train_xgb$y_pred2), as.factor(train_xgb$nota_vino), positive='1')
+cm_train_xgb$table
+#result
+cm_train_xgb$overall['Accuracy'] %>% round(2)
+cm_train_xgb$byClass['Recall'] %>% round(2)
+cm_train_xgb$byClass['Precision'] %>% round(2)
 
 ```
 
-Obtenemos un valor del accuracy con la configuración de parámetros óptima en test de 73.44%.
+Reproducimos la curva ROC sobre el modelo final de Ada Boost obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_ada <- plot.roc(as.numeric(train_en$nota_vino), as.numeric(train_en$y_pred_probs2))
+auc(roc_ada)
+
+```
 
 
 ## 10.6. SVM Lineal - Support Vector Machines Lineal
