@@ -2052,20 +2052,173 @@ Utilizamos el paquete kernlab para crear nuestro algoritmo SVM y entrenamos nues
 En nuestro dataset de train y test, hemos creado la variable binaria “nota_vino”para que, en función de “quality,nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
 ```{r}
-train_svm <- train[, colnames(train)!="quality"]
-train_svm$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
-train_svm
+#train_svm <- train[, colnames(train)!="quality"]
+#train_svm$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
+#train_svm
+
+
 ```
 
+## 10.6.2 Modelo SVM ----------Nuestro
 
-## 10.6.2. Creación del modelo SVM Lineal
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_svm <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_svm
+
+table(train_svm$nota_vino)
+
+str(train_svm)
+
+``` 
+
+```{r}
+modelLookup('svmLinear')
+
+modelLookup('svmRadial')
+
+```
+
+```{r}
+set.seed(5555)
+# Fit the model 
+caret.svm <- train(as.factor(nota_vino) ~., data = train_svm, 
+                   method = "svmLinear", 
+                   trControl = trainControl("cv", number = 5, search = "grid"),
+                   preProcess = c("center","scale"),
+                   tuneGrid = expand.grid(C = seq(0.1, 2, length = 20)))
+
+
+#View the model
+caret.svm
+plot(caret.svm)
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(caret.svm)
+
+``` 
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+train_svm$y_pred_probs2 <- predict(caret.svm, newdata = train_svm)
+
+#train_svm$y_pred_probs2 <- ifelse(train_svm$y_pred_probs2$`1` > 0.5, train_svm$y_pred_probs2$`1`, 1-train_svm$y_pred_probs2$`0`)
+
+#train_svm$y_pred2 <- ifelse(train_svm$y_pred_probs2 > 0.5, 1, 0)
+
+train_svm$y_pred_probs2
+#train_svm
+#train_svm$y_pred2
+
+```  
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de SVM obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_svm <- confusionMatrix(as.factor(train_svm$y_pred_probs2), as.factor(train_svm$nota_vino), positive='1')
+cm_train_svm$table
+#result
+cm_train_svm$overall['Accuracy'] %>% round(2)
+cm_train_svm$byClass['Recall'] %>% round(2)
+cm_train_svm$byClass['Precision'] %>% round(2)
+
+```
+
+Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_svm <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2))
+auc(roc_svm)
+
+``` 
+
+### SVM radial
+
+```{r}
+
+modelLookup('svmRadial')
+
+```
+
+```{r}
+set.seed(6666)
+# Fit the model 
+caret.svm.radial <- train(as.factor(nota_vino) ~., data = train_svm, 
+                   method = "svmRadial", 
+                   trControl = trainControl("cv", number = 5, search = "grid"),
+                   preProcess = c("center","scale"),
+                   tuneLength = 20)
+
+
+#View the model
+caret.svm.radial
+plot(caret.svm.radial)
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(caret.svm.radial)
+
+``` 
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+train_svm$y_pred_probs2 <- predict(caret.svm.radial, newdata = train_svm)
+
+#train_svm$y_pred_probs2 <- ifelse(train_svm$y_pred_probs2$`1` > 0.5, train_svm$y_pred_probs2$`1`, 1-train_svm$y_pred_probs2$`0`)
+
+#train_svm$y_pred2 <- ifelse(train_svm$y_pred_probs2 > 0.5, 1, 0)
+
+train_svm$y_pred_probs2
+#train_svm
+#train_svm$y_pred2
+
+```  
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de SVM obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_svm_radial <- confusionMatrix(as.factor(train_svm$y_pred_probs2), as.factor(train_svm$nota_vino), positive='1')
+cm_train_svm_radial$table
+#result
+cm_train_svm_radial$overall['Accuracy'] %>% round(2)
+cm_train_svm_radial$byClass['Recall'] %>% round(2)
+cm_train_svm_radial$byClass['Precision'] %>% round(2)
+
+```
+
+Reproducimos la curva ROC sobre el modelo final de SVM obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_svm_radial <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2))
+auc(roc_svm_radial)
+
+``` 
+
+## 10.6.2. Creación del modelo SVM Lineal-------Isabela
 
 Creamos un modelo SVM Lineal con todos los predictores de nuestro data set.
-```{r}
-set.seed(13)
 
-modelo_svmlineal <- train(nota_vino ~ ., method = "svmLinear", data = train_svm)
-modelo_svmlineal$finalModel
+```{r}
+#set.seed(13)
+
+#modelo_svmlineal <- train(nota_vino ~ ., method = "svmLinear", data = train_svm)
+#modelo_svmlineal$finalModel
 
 ```
 
@@ -2080,39 +2233,39 @@ Cuando se aplican estos métodos, el coste computacional de ajustar múltiplas v
 ```{r}
 #paralelización
 
-registerDoMC(cores = 4)
+#registerDoMC(cores = 4)
 
 
 #número de repeticiones para realizar la validación cruzada
 
-particiones  <- 10
-repeticiones <- 5
+#particiones  <- 10
+#repeticiones <- 5
 
 
 
 #modelo
 
-control_modelosvm_lineal <- trainControl(method = "repeatedcv", number = particiones,repeats = repeticiones,returnResamp = "all", verboseIter = FALSE,allowParallel = TRUE)
+#control_modelosvm_lineal <- trainControl(method = "repeatedcv", number = particiones,repeats = repeticiones,returnResamp = "all", verboseIter = FALSE,allowParallel = TRUE)
 
 
-set.seed(342)
-modelo_svmlineal <- train(nota_vino ~ ., data = train_svm,
-                          method = "svmLinear",
-                          metric = "Accuracy",
-                          trControl = control_modelosvm_lineal)
-modelo_svmlineal
+#set.seed(342)
+#modelo_svmlineal <- train(nota_vino ~ ., data = train_svm,
+#                          method = "svmLinear",
+#                          metric = "Accuracy",
+#                          trControl = control_modelosvm_lineal)
+#modelo_svmlineal
 
 
 ```
 Con esta validación cruzada con 10 particiones y 5 repeticiones hemos ajustado nuestro modelo 50 veces. Podemos pintar una gráfica con el accuracy obtenido en cada uno de estos modelos.
 
 ```{r}
-grafo1 <- ggplot(data = modelo_svmlineal$resample, aes(x = Accuracy)) + geom_density(alpha = 0.5, fill = "blue") +geom_vline(xintercept = mean(modelo_svmlineal$resample$Accuracy),linetype = "dashed") + theme_bw() 
-grafo2 <- ggplot(data = modelo_svmlineal$resample, aes(x = 1, y = Accuracy)) +geom_boxplot(outlier.shape = NA, alpha = 0.5, fill = "blue") +
-      geom_jitter(width = 0.05) +labs(x = "") +theme_bw() + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
-final_plot_svm <- ggarrange(grafo1, grafo2)
-final_plot_svm <- annotate_figure(final_plot_svm,top = text_grob("Accuracy obtenido en la validación", size = 15))
-final_plot_svm
+#grafo1 <- ggplot(data = modelo_svmlineal$resample, aes(x = Accuracy)) + geom_density(alpha = 0.5, fill = "blue") +geom_vline(xintercept = mean(modelo_svmlineal$resample$Accuracy),linetype = "dashed") + theme_bw() 
+#grafo2 <- ggplot(data = modelo_svmlineal$resample, aes(x = 1, y = Accuracy)) +geom_boxplot(outlier.shape = NA, alpha = 0.5, fill = "blue") +
+#      geom_jitter(width = 0.05) +labs(x = "") +theme_bw() + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+#final_plot_svm <- ggarrange(grafo1, grafo2)
+#final_plot_svm <- annotate_figure(final_plot_svm,top = text_grob("Accuracy obtenido en la validación", size = 15))
+#final_plot_svm
 
 ```
 Con validación cruzada llegamos a un accuracy promedio de 0.7513. Eso es lo mismo que decir que, mi modelo SVM Lineal predice si un vino es bueno o malo 75% de las veces.
@@ -2129,22 +2282,22 @@ Para los diferentes valores de C, hemos elegido trabajar con grid search donde s
 
 #paralelización
 
-registerDoMC(cores = 4)
+#registerDoMC(cores = 4)
 
 #hiperparámetros y número de repeticiones
-particiones  <- 10
-repeticiones <- 5
+#particiones  <- 10
+#repeticiones <- 5
 
-hiperparametros <- data.frame(C = c(0.001, 0.01, 0.1, 0.5, 1, 10))
+#hiperparametros <- data.frame(C = c(0.001, 0.01, 0.1, 0.5, 1, 10))
 
 
 #modelo
-control_modelosvm_lineal <- trainControl(method = "repeatedcv", number = particiones,repeats = repeticiones,returnResamp = "all", verboseIter =FALSE,allowParallel = TRUE)
+#control_modelosvm_lineal <- trainControl(method = "repeatedcv", number = particiones,repeats = repeticiones,returnResamp = "all", verboseIter =FALSE,allowParallel = TRUE)
 
 
-set.seed(342)
-modelo_svmlineal <- train(nota_vino ~ ., data = train_svm,method = "svmLinear",tuneGrid = hiperparametros,metric = "Accuracy",trControl =control_modelosvm_lineal)
-modelo_svmlineal
+#set.seed(342)
+#modelo_svmlineal <- train(nota_vino ~ ., data = train_svm,method = "svmLinear",tuneGrid = hiperparametros,metric = "Accuracy",trControl =control_modelosvm_lineal)
+#modelo_svmlineal
 
 ```
 Podemos observar que en nuestro caso de todos los valores de C utilizados, C=0.01 es lo que nos devuelve los mejores resultados con un accuracy de 0.7526.
@@ -2152,19 +2305,29 @@ Podemos observar que en nuestro caso de todos los valores de C utilizados, C=0.0
 Observamos la variación la variación de nuestros accuracy para cada uno de los valores de C en el grafo abajo.
 
 ```{r}
-ggplot(data = modelo_svmlineal$resample,aes(x = as.factor(C), y = Accuracy, color = as.factor(C))) +geom_boxplot(outlier.shape = NA, alpha = 0.6) +
-  geom_jitter(width = 0.2, alpha = 0.6) + geom_hline(yintercept = 0.62, linetype = "dashed") +labs(x = "C") + theme_bw() + theme(legend.position = "none")
+#ggplot(data = modelo_svmlineal$resample,aes(x = as.factor(C), y = Accuracy, color = as.factor(C))) +geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+#  geom_jitter(width = 0.2, alpha = 0.6) + geom_hline(yintercept = 0.62, linetype = "dashed") +labs(x = "C") + theme_bw() + theme(legend.position = "none")
 ```
 También podemos observar la evolución de los modelos según los valores de hiperparámetros que hemos elegido.
 
 ```{r}
-ggplot(modelo_svmlineal, highlight = TRUE) +labs(title = "Evolución accuracy en función de C") +  theme_bw()
+#ggplot(modelo_svmlineal, highlight = TRUE) +labs(title = "Evolución accuracy en función de C") +  theme_bw()
 ```
 
 
 # 11. Aprendizaje no supervisado
 
 ## 11.1. K-MEANS
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_km <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+train_km
+
+table(train_km$nota_vino)
+
+str(train_km)
+
+``` 
 
 Quitamos la variable respuesta "quality":
 
@@ -2174,18 +2337,31 @@ train_kmeans
 
 ```
 
+```{r}
+train_kmeans_s<-scale(train_kmeans, center = TRUE, scale = TRUE)
+#train_kmeans_s
+```
+
 Buscamos el valor óptimo de cluster a tener en nuestro modelo:
 
 ```{r}
-fviz_nbclust(train_kmeans, kmeans, method = "wss")
+fviz_nbclust(train_kmeans_s, kmeans, method = "wss")
 
 ```
 
 Otra forma de buscar el óptimo:
 
+```{r}
+wholesaleBest = FitKMeans(train_kmeans_s, max.clusters = 10, nstart = 25, seed = 666)
+wholesaleBest
+
+PlotHartigan(wholesaleBest)
+
+```
+
 ```{r, warning =FALSE}
 #calculate gap statistic based on number of clusters
-gap_stat <- clusGap(train_kmeans,
+gap_stat <- clusGap(train_kmeans_s,
                     FUN = kmeans,
                     nstart = 25,
                     K.max = 10,
@@ -2202,7 +2378,7 @@ Desarrollamos el Clustering con K-means con el número óptimo de K:
 #make this example reproducible
 set.seed(666)
 
-km <- kmeans(train_kmeans, centers = 3, nstart = 25)
+km <- kmeans(train_kmeans_s, centers = 3, nstart = 25)
 
 #view results
 km
@@ -2212,14 +2388,14 @@ km
 Graficamos los resultados obtenidos:
 
 ```{r}
-fviz_cluster(km, data = train_kmeans, geom = "point")
+fviz_cluster(km, data = train_kmeans_s, geom = "point")
 
 ```
 
 Vemos la media de los valores para cada uno de los diferentes clusters y su tamaño:
 
 ```{r}
-aggregate(train_kmeans, by=list(cluster=km$cluster), mean)
+aggregate(train_kmeans_s, by=list(cluster=km$cluster), mean)
 km$size
 
 ```
@@ -2229,14 +2405,27 @@ table(km$cluster, train$quality)
 
 ```
 
-
 ```{r}
-wholesaleBest = FitKMeans(train_kmeans, max.clusters = 10, nstart = 25, seed = 666)
-wholesaleBest
-
-PlotHartigan(wholesaleBest)
+table(km$cluster, train_km$nota_vino)
 
 ```
+
+```{r}
+kmean_model_cluster <- as.data.frame(km$cluster)
+#names(kmean_model_cluster)[1] <- 'class'
+kmean_model_cluster$nota_vino <- as.factor(ifelse(kmean_model_cluster=='1','1','0'))
+kmean_model_cluster$nota_vino
+```
+
+```{r}
+#train_km$nota_vino
+#kmean_model_cluster$nota_vino
+str(train_km$nota_vino)
+str(kmean_model_cluster$nota_vino)
+confusionMatrix(as.factor(train_km$nota_vino), kmean_model_cluster$nota_vino)
+```
+
+
 
 ## 11.2. Clustering Jerárquico
 ## 11.3. DBSCAN/HDBSCAN
