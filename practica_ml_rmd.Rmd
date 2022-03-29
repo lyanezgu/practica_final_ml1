@@ -1659,10 +1659,21 @@ Se obtiene alrededor de un 78% de área bajo la curva.
 En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-train_forest <- train[, colnames(train)!="quality"]
-train_forest$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
+train_forest <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
 train_forest
+
+table(train_forest$nota_vino)
+
 str(train_forest)
+
+``` 
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+#train_forest <- train[, colnames(train)!="quality"]
+#train_forest$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
+#train_forest
+#str(train_forest)
 
 ```     
 
@@ -1670,7 +1681,7 @@ Creamos el modelo de bosque de árboles:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(4343)
-rf <-randomForest(train_forest$nota_vino~., data=train_forest, ntree=200, do.trace=T, importance=T)
+rf <-randomForest(as.factor(nota_vino)~., data=train_forest, ntree=200, do.trace=T, importance=T)
 rf
 
 ```  
@@ -1690,24 +1701,132 @@ varImpPlot(rf)
 
 ```
 
-Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+### 10.4.1. RANDOM FOREST - Cross Validation, Hiperparámetros y Evaluación del modelo
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test_forest <- test[, colnames(test)!="quality"]
-test_forest$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
-str(test_forest)
 
-```  
-
-Realizamos la predicción sobre los datos de test:
-
-```{r}
-pred2222<-predict(rf, newdata=test_forest, type="class")
-confusionMatrix(pred2222, test_forest$nota_vino)
+modelLookup("rf")
 
 ```
 
-Conseguimos un accuracy del 76.25% en test.
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+# Fit the model on the training set
+set.seed(12345)
+
+caret.rf <- train(
+  as.factor(nota_vino) ~ ., data = train_forest, 
+  method = "rf",
+  ntree = 200,
+  importance=TRUE,
+  metric = "Accuracy",
+  trControl = trainControl("cv", number = 5, search = "grid"),
+  nodesize = 80,
+  tuneLength = 10
+  )
+
+plot(caret.rf)
+
+```  
+
+```{r}
+caret.rf
+caret.rf$bestTune
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+
+get_best_result(caret.rf)
+
+``` 
+
+Evaluación del rendimiento predictivo del modelo Random Forest presentado con las datos de train:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+train_forest$y_pred_probs2 <- predict(caret.rf, newdata = train_forest, type = "prob")
+train_forest$y_pred_probs2 <- ifelse(train_forest$y_pred_probs2$`1` > 0.5, train_forest$y_pred_probs2$`1`, 1-train_forest$y_pred_probs2$`0`)
+
+train_forest$y_pred2 <- ifelse(train_forest$y_pred_probs2 > 0.5, 1, 0)
+
+#train_forest$y_pred_probs2
+train_forest$y_pred2
+train_forest
+
+```  
+
+
+
+
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Random Forest obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_forest <- confusionMatrix(as.factor(train_forest$y_pred2), as.factor(train_forest$nota_vino), positive='1')
+cm_train_forest$table
+#result
+cm_train_forest$overall['Accuracy'] %>% round(2)
+cm_train_forest$byClass['Recall'] %>% round(2)
+cm_train_forest$byClass['Precision'] %>% round(2)
+
+```
+
+Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_rf <- plot.roc(as.numeric(train_forest$nota_vino), as.numeric(train_forest$y_pred_probs2))
+auc(roc_rf)
+
+``` 
+
+
+
+**Comprobación del modelo con los datos de test:**
+
+Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_forest <- test %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+test_forest
+
+table(test_forest$nota_vino)
+
+str(test_forest)
+
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+test_forest$y_pred_probs2 <- predict(caret.rf, newdata = test_forest, type = "prob")
+test_forest$y_pred_probs2 <- ifelse(test_forest$y_pred_probs2$`1` > 0.5, test_forest$y_pred_probs2$`1`, 1-test_forest$y_pred_probs2$`0`)
+
+test_forest$y_pred2 <- ifelse(test_forest$y_pred_probs2 > 0.5, 1, 0)
+
+#test_forest$y_pred_probs2
+test_forest$y_pred2
+test_forest
+
+```  
+
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Random Forest obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_test_forest <- confusionMatrix(as.factor(test_forest$y_pred2), as.factor(test_forest$nota_vino), positive='1')
+cm_test_forest$table
+#result
+cm_test_forest$overall['Accuracy'] %>% round(2)
+cm_test_forest$byClass['Recall'] %>% round(2)
+cm_test_forest$byClass['Precision'] %>% round(2)
+
+```
 
 
 ## 10.5. MÉTODOS DE ENSAMBLE
