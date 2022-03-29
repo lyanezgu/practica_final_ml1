@@ -1137,7 +1137,7 @@ summary(modelo_glm)
 Como observamos, nos quedamos solo con las variables significativas que relamente afectan a "nota_vino", y creamos un nuevo modelo exclusivamente con ellas ("Log_sulphates", "Log_total_sulfur_dioxide", "volatile_acidity" y "alcohol"). De esta forma simplificamos el modelo, nos quedamos con las varibales realmente importantes para el modelo predictor y creamos el mejor modelo de regresión logística posible para nuestro conjunto de datos.
 
 ```{r, include=TRUE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-modelo_glm2 = glm(nota_vino ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide , data = train_glm, family = binomial)
+modelo_glm2 = glm(nota_vino ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, data = train_glm, family = binomial)
 
 modelo_glm2
 
@@ -1468,19 +1468,13 @@ Se obtiene alrededor de un 82/83% de área bajo la curva.
 
 En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
-
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-
-
-
 #train_tree <- train[, colnames(train)!="quality"]
 #train_tree$nota_vino <- factor(train$quality < 6, labels = c('aprobado', 'suspenso'))
 #train_tree
 #str(train_tree)
 
 ``` 
-
-
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_tree <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
@@ -1492,7 +1486,7 @@ str(train_tree)
 
 ``` 
 
-
+Creamos un modelo de árbol de decisión inicial básico y sin podar:
 
 ```{r}
 # árbol de clasificación con las opciones por defecto (cp = 0.01 y split = "gini") con el comando:
@@ -1508,6 +1502,24 @@ Analizamos los resultados obtenidos de forma numérica:
 rpart.rules(tree, style = "tall")
 
 ```
+
+
+* **Modelo Decision Tree sin poda:**
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+obs_tree1 <- as.factor(train_tree$nota_vino)
+head(predict(tree, newdata = train_tree))
+
+pred_tree1 <- predict(tree, newdata = train_tree, type = "class")
+table(obs_tree1, pred_tree1)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+caret::confusionMatrix(pred_tree1, obs_tree1)
+
+```  
+
+Obtenemos un valor del 76.86% para la precisión del modelo, con el incoveniente de tener un modelo sin poda, demasiado complejo y que puede tender al sobreajuste.
 
 Realizamos la valoración para una posible poda del modelo que permita simplificarlo y hacerlo más explicativo sin perder capacidad predictora.
 Para ello vemos el CP o "Parámetro de complejidad" con el cual buscamos el árbol menos profundo que además minimice la tasa de error.
@@ -1538,35 +1550,57 @@ rpart.plot(tree_2, nn = TRUE, extra = 104,  box.palette = "GnBu", branch.lty = 3
 
 ```  
 
-### 10.2.2. Decision Tree - Cross Validation, Hiperparámetros y Evaluación del modelo
+* **Modelo Decision Tree con poda:**
+```{r}
+obs_tree2 <- as.factor(train_tree$nota_vino)
+head(predict(tree_2, newdata = train_tree))
 
+pred_tree2 <- predict(tree_2, newdata = train_tree, type = "class")
+table(obs_tree2, pred_tree2)
+
+```
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+caret::confusionMatrix(pred_tree2, obs_tree2)
+
+``` 
+
+Aplicando la poda a nuestro árbol obtenemos un modelo mas limpio, simple, explicativo y generalizable a otro conjunto de datos, evitando el posible sobreajuste del modelo y solo reduciendo su capacidad predictora a un valor de precisión del 74.67%. Entendemos que este modelo podado será el óptimo en este caso.
+
+### 10.3.1. DECISION TREE - Cross Validation, Hiperparámetros y Evaluación del modelo
+
+De cara a obtener el mejor modelo posible realizaremos validación cruzada de 5 folds y trataremos de ajustar hiperparámetros (el "cp" óptimo para un modelo ya validado). Utilizamos además las variables que hemos vito como más representativas y explicativas de la variable respuesta "nota_vino".
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
 # Fit the model on the training set
-set.seed(123)
-tree_caret <- train(
-  as.factor(nota_vino) ~alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, data = train_tree, method = "rpart",
+set.seed(1234)
+caret.tree <- train(
+  as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, data = train_tree, method = "rpart",
   trControl = trainControl("cv", number = 5),
-  tuneLength = 50
+  tuneLength = 20
   )
 # Plot model accuracy vs different values of
 # cp (complexity parameter)
-plot(tree_caret)
+plot(caret.tree)
 
 ```  
 
 ```{r}
-tree_caret
-tree_caret$bestTune
+caret.tree
+caret.tree$bestTune
 
 ```
-```{r}
 
+Realizando la validación cruzada vemos que el CP óptimo para nuestro modelo de árbol de decisión se encuentra en 0.01930706.
+
+Visualizamos graficamente el árbol obtenido:
+
+```{r}
 # Plot the final tree model
 par(xpd = NA) # Avoid clipping the text in some device
-plot(tree_caret$finalModel)
-text(tree_caret$finalModel,  digits = 3)
+plot(caret.tree$finalModel,uniform=TRUE)
+text(caret.tree$finalModel,  digits = 10)
 
 ```
 
@@ -1578,14 +1612,17 @@ get_best_result = function(caret_fit) {
   best_result
 }
 
-get_best_result(tree_caret)
+get_best_result(caret.tree)
 
 ``` 
 
+Obtenemos finalmente haciendo validación cruzada una precisión del 72/73%, con un modelo que ha sido comprobado como robusto y generalizable para funcionar previsiblemente en otro conjunto de datos diferente.
+
+Evaluación del rendimiento predictivo del modelo Decision Tree presentado con las datos de train:
+
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
-
-train_tree$y_pred_probs2 <- predict(tree_caret, newdata = train_tree, type = "prob")
+train_tree$y_pred_probs2 <- predict(caret.tree, newdata = train_tree, type = "prob")
 train_tree$y_pred_probs2 <- ifelse(train_tree$y_pred_probs2$`1` > 0.5, train_tree$y_pred_probs2$`1`, 1-train_tree$y_pred_probs2$`0`)
 
 train_tree$y_pred2 <- ifelse(train_tree$y_pred_probs2 > 0.5, 1, 0)
@@ -1595,7 +1632,7 @@ train_tree$y_pred2 <- ifelse(train_tree$y_pred_probs2 > 0.5, 1, 0)
 
 ```  
 
-Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de KNN obtenido:
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Decision Tree obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 cm_train_tree <- confusionMatrix(as.factor(train_tree$y_pred2), as.factor(train_tree$nota_vino), positive='1')
@@ -1607,51 +1644,15 @@ cm_train_tree$byClass['Precision'] %>% round(2)
 
 ```
 
-
-### 10.3.1. Comprobación del árbol de decisión con datos de Test
-
-Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test_tree <- test[, colnames(test)!="quality"]
-test_tree$nota_vino <- factor(test$quality < 6, labels = c('aprobado', 'suspenso')) # levels = c('FALSE', 'TRUE')
-str(test_tree)
-
-```  
-
-* **Modelo Decision Tree sin poda:**
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-obs <- test_tree$nota_vino
-head(predict(tree, newdata = test_tree))
-
-pred <- predict(tree, newdata = test_tree, type = "class")
-table(obs, pred)
-
-```
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-#caret::confusionMatrix(pred, obs)
-
-```  
-
-Obtenemos un valor del 69.06% para la precisión del modelo, con el incoveniente de tener un modelo sin poda, demasiado complejo y que puede tender al sobreajuste.
-
-* **Modelo Decision Tree con poda:**
-```{r}
-obs2 <- test_tree$nota_vino
-head(predict(tree_2, newdata = test_tree))
-
-pred2 <- predict(tree_2, newdata = test_tree, type = "class")
-table(obs2, pred2)
-
-```
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-#caret::confusionMatrix(pred2, obs2)
+roc_tree <- plot.roc(as.numeric(train_tree$nota_vino), as.numeric(train_tree$y_pred_probs2))
+auc(roc_tree)
 
 ``` 
 
-Aplicando la poda a nuestro árbol obtenemos un modelo mas limpio, simple, explicativo y generalizable a otro conjunto de datos, evitando el posible sobreajuste del modelo y solo reduciendo su capacidad predictora a un valor de precisión del 66.25%. Entendemos que este modelo podado será el óptimo en este caso.
+Se obtiene alrededor de un 78% de área bajo la curva.
 
 ## 10.4. RANDOM FOREST
 
