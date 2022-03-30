@@ -1706,7 +1706,7 @@ caret.rf <- train(
   importance=TRUE,
   metric = "Accuracy",
   trControl = trainControl("cv", number = 5, search = "grid"),
-  nodesize = 50,
+  nodesize = 30,
   tuneLength = 10
   )
 
@@ -2007,7 +2007,7 @@ varImp(caret.xgb)
 
 ```
 
-Evaluación del rendimiento predictivo del modelo Ada Boost presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo XG Boost presentado con las datos de train:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -2022,7 +2022,7 @@ train_xgb
 
 ```  
 
-Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Ada Boost obtenido:
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de XG Boost obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 cm_train_xgb <- confusionMatrix(as.factor(train_xgb$y_pred2), as.factor(train_xgb$nota_vino), positive='1')
@@ -2034,11 +2034,11 @@ cm_train_xgb$byClass['Precision'] %>% round(2)
 
 ```
 
-Reproducimos la curva ROC sobre el modelo final de Ada Boost obtenido:
+Reproducimos la curva ROC sobre el modelo final de XG Boost obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_ada <- plot.roc(as.numeric(train_en$nota_vino), as.numeric(train_en$y_pred_probs2))
-auc(roc_ada)
+roc_xgb <- plot.roc(as.numeric(train_xgb$nota_vino), as.numeric(train_xgb$y_pred_probs2))
+auc(roc_xgb)
 
 ```
 
@@ -2511,8 +2511,70 @@ plot(gam_mod_log2_test, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "li
 
 ``` 
 
+# 13. Comparación entre los diferentes modelos
 
-# 13. Conclusiones generales del estudio
+Los modelos que mejor encajan para la clasificación de los vino entre aprobados (quality =>6) y suspenso (quality <6) son los siguientes:
+
+**GLM:** Con un accuracy obtenido entorno al 75% y un AUC de aproximadamente un 82%.
+
+```{r}
+caret.glm
+auc(roc_glm)
+
+``` 
+
+**KNN:** Con un accuracy obtenido entorno al 76% y un AUC de aproximadamente un 83%.
+
+```{r}
+caret.knn
+auc(roc_knn)
+
+``` 
+
+**Decision Tree:** Con un accuracy obtenido entorno al 73% y un AUC de aproximadamente un 78%.
+
+```{r}
+caret.tree
+auc(roc_tree)
+
+``` 
+
+**Random Forest:** Con un accuracy obtenido entorno al 76% y un AUC de aproximadamente un 93%.
+
+```{r}
+caret.rf
+auc(roc_rf)
+
+``` 
+
+**ADABoost:** Con un accuracy obtenido entorno al 76% y un AUC de aproximadamente un 89%.
+
+```{r}
+caret.ada
+auc(roc_ada)
+
+``` 
+
+**XGBoost:** Con un accuracy obtenido entorno al 79% y un AUC de aproximadamente un 89%.
+
+```{r}
+caret.xgb
+auc(roc_xgb)
+
+``` 
+
+```{r}
+#GLM
+#pred.glm <- prediction(predict.glm, train_glm$nota_vino)
+#pref.glm <- (pred.glm, "tpr", "fpr")
+#plot(pref1, col = "blue", lwd = 2)
+
+
+``` 
+
+# 14. Comprobación del mejor modelo con datos de test
+
+# 15. Conclusiones generales del estudio
 
 * **Regresión Lineal Mútiple:** Vemos una falta de adecuación y ajuste del modelo de regresión lineal múltiple obtenido. Se observa un modelo con unos residuos que presentan heterocedasticidad (varianza no constante en el modelo - se viola la homocedasticidad) y que además no predice de forma adecuada la variable respuesta o dependiente, en base a las variables explicativas o independientes. Al tener una variable dependiente como "quality" que es discreta, un modelo de regresión linela normal no se ajusta a nuestros datos.
 
