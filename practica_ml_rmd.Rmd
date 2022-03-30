@@ -2390,16 +2390,18 @@ coef(gam_mod)
 summary(gam_mod)
 
 ```
+Falta la variable log clorides-------
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-gam_mod2 = gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates), data = train, method = "REML")
+gam_mod2 = gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates)+s(Log_chlorides),data = train, method = "REML")
 
 summary(gam_mod2)
 
 ```  
 
+
 ```{r}
-plot(gam_mod2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue")
+plot(gam_mod2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightgreen")
 
 ```
 
@@ -2442,14 +2444,18 @@ gam_mod_log2 = gam(nota_vino ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphate
 summary(gam_mod_log2)
 
 ```  
-Nuestro intercept es de 0.26735 y utilizamos la función plogis() para transformar nuestro intercept en una probabilidad. 
+
+Aquí, el valor del intercepto es 0.26735 que esta en escala logaritmica. Podemos utilizar la función logística plogis() para convertirlo en una probabilidad.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 plogis(0.26773)
 plogis(coef(gam_mod_log2)[1])
 
 ```  
-Este valor significa que nuestro modelo predice una probabilidad inicial de aproximadamente 57% de un vino ser bueno.
+
+Esto significa que el modelo predice una probabilidad base del 57% de un resultado positivo, es decir que un vino esta aprobado. 
+
+
 
 ```{r}
 plot(gam_mod_log2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue", trans = plogis, shift = coef(gam_mod_log2)[1], 
@@ -2462,6 +2468,17 @@ plot(gam_mod_log2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightbl
 #plogis(predict(gam_mod_log2, type="link"))
 
 ```
+
+Calculamos la prediccion y los errores
+
+```{r}
+
+predictions <- predict(gam_mod_log2, newdata = train_gam,
+                       type = "link", se.fit = TRUE)
+
+```
+
+
 
 Probar en test?¿
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
