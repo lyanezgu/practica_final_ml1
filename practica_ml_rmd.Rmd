@@ -1005,6 +1005,8 @@ Binarizando la variable respuesta tampoco sacamos demasiado en claro, no siendo 
 
 Lo primero de todo, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0")
 
+    
+
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_glm <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
 train_glm
@@ -1185,7 +1187,7 @@ caret.glm <- train(as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulph
                    method = "glm",
                    family = "binomial",
                    data = train_glm,
-                   trControl = trainControl(method = "cv", number = 5, search = "grid"))
+                   trControl = trainControl(method = "cv", number = 5, search = "grid",returnResamp = "final"))
 caret.glm
 summary(caret.glm)
 
@@ -1350,7 +1352,7 @@ caret.knn = train(
   as.factor(nota_vino) ~ .,
   data = train_knn,
   method = "knn",
-  trControl = trainControl(method = "cv", number = 5, search = "grid"),
+  trControl = trainControl(method = "cv", number = 5, search = "grid", returnResamp = "final"),
   preProcess = c("center", "scale"),
   tuneGrid = expand.grid(k = seq(1, 101, by = 2))
 )
@@ -1526,7 +1528,7 @@ De cara a obtener el mejor modelo posible realizaremos validación cruzada de 5 
 set.seed(1234)
 caret.tree <- train(
   as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, data = train_tree, method = "rpart",
-  trControl = trainControl("cv", number = 5, search = "grid"),
+  trControl = trainControl("cv", number = 5, search = "grid", returnResamp = "final"),
   tuneLength = 20
   )
 # Plot model accuracy vs different values of
@@ -1673,7 +1675,7 @@ caret.rf <- train(
   ntree = 100,
   importance=TRUE,
   metric = "Accuracy",
-  trControl = trainControl("cv", number = 5, search = "grid"),
+  trControl = trainControl("cv", number = 5, search = "grid", returnResamp = "final"),
   nodesize = 30,
   tuneLength = 10
   )
@@ -1806,7 +1808,7 @@ Vemos los parámetros de "iter", "maxdepth" y "nu" que tiene el modelo ada de bo
 ```{r}
 set.seed(123)
 caret.ada <- train(as.factor(nota_vino) ~ ., method = "ada", data = train_en,
-                   trControl = trainControl(method = "cv", number = 5, search = "grid"))
+                   trControl = trainControl(method = "cv", number = 5, search = "grid",returnResamp = "final"))
 caret.ada
 
 ```
@@ -1908,7 +1910,7 @@ set.seed(2)
 caret.xgb <- train(as.factor(nota_vino) ~ ., 
                    method = "xgbTree", 
                    data = train_xgb,
-                   trControl = trainControl(method = "cv", number = 5, search = "grid"))
+                   trControl = trainControl(method = "cv", number = 5, search = "grid", returnResamp = "final"))
 caret.xgb
 
 ```    
@@ -2004,7 +2006,7 @@ set.seed(5555)
 # Fit the model 
 caret.svm <- train(as.factor(nota_vino) ~., data = train_svm, 
                    method = "svmLinear", 
-                   trControl = trainControl("cv", number = 5, search = "grid"),
+                   trControl = trainControl("cv", number = 5, search = "grid",returnResamp = "final"),
                    preProcess = c("center","scale"),
                    tuneGrid = expand.grid(C = seq(0.1, 2, length = 20)))
 
@@ -2076,7 +2078,7 @@ set.seed(6666)
 # Fit the model 
 caret.svm.radial <- train(as.factor(nota_vino) ~., data = train_svm, 
                    method = "svmRadial", 
-                   trControl = trainControl("cv", number = 5, search = "grid"),
+                   trControl = trainControl("cv", number = 5, search = "grid", returnResamp = "final"),
                    preProcess = c("center","scale"),
                    tuneLength = 20)
 
@@ -2335,11 +2337,11 @@ gam.check(gam_mod2)
 
 ## 12.2. Con Logistic GAM
 
-https://noamross.github.io/gams-in-r-course/chapter4
-
 Lo primero de todo, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0")
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+#https://noamross.github.io/gams-in-r-course/chapter4
+
 train_gam <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
 train_gam
 
@@ -2423,6 +2425,32 @@ plogis(sum(predict(gam_mod_log2, type = "terms")) + coef(gam_mod_log2)[1])
 # 13. Comparación entre los diferentes modelos
 
 Los modelos que mejor encajan para la clasificación de los vino entre aprobados (quality =>6) y suspenso (quality <6) son los siguientes:
+
+```{r}
+modelos <- list(KNN = caret.knn, GLM = caret.glm,
+                DT = caret.tree, RF = caret.rf,
+                ADA = caret.ada, XGB = caret.xgb)
+resultados_resamples <- resamples(modelos)
+#resultados_resamples$values
+#colMeans(resultados_resamples$values[,-1])
+resultados_modelos<-resultados_resamples$values[,-1]%>%
+  summarise_all(mean)
+resultados_modelos
+```
+
+```{r}
+resultados_modelos_acc<-resultados_modelos[,c(-2,-4,-6,-8,-10,-12)]
+resultados_finales_acc<-t(resultados_modelos_acc)
+colnames(resultados_finales_acc)<-'Accuracy'
+resultados_finales_acc
+```
+```{r}
+resultados_modelos_kap<-resultados_modelos[,c(-1,-3,-5,-7,-9,-11)]
+resultados_finales_kap<-t(resultados_modelos_kap)
+colnames(resultados_finales_kap)<-'Kappa'
+resultados_finales_kap
+```
+
 
 **GLM:** Con un accuracy obtenido entorno al 75% y un AUC de aproximadamente un 82%.
 
