@@ -76,6 +76,7 @@ library(kernlab)
 library(pROC)
 library(doMC)
 library(ggpubr)
+library(ROCR)
 
 ```
 
@@ -131,9 +132,9 @@ Empezando ya el análisis inicial del conjunto de datos que tenemos, vemos que l
 El objetivo final del proyecto es conseguir llegar a un modelo que permita predecir la calidad del vino tinto de la variedad portuguesa de "Vinho Verde" y saber si estamos ante vinos recomendables (aprobados/bebibles) o no recomendables y que se deberían evitar (suspensos/no bebibles).
 
 
-## 2.4. Limpieza inicial del conjunto de datos
+# 3. Limpieza inicial del conjunto de datos
 
-### 2.4.1. Cambio de nombres de las columnas
+## 3.1. Cambio de nombres de las columnas
 
 Se ha decidido realizar un cambio en el nombre de las variables que aparecen en las columnas de los datos para así seguir un mismo patrón y a la vez evitar tener espacios que nos pueden llegar a dar problemas a futuro.
 
@@ -146,7 +147,7 @@ head(red_wine)
 ```
 
 
-### 2.4.2. Cambio de tipo de variable
+## 3.2. Cambio de tipo de variable
 
 Todas las variables input de las que disponemos en el dataset son de tipo numérico y entendemos que en principio no requieren ninguna transformación en ese sentido.
 
@@ -157,7 +158,7 @@ str(red_wine)
 
 ```
 
-# 3. Añadiendo datos faltantes al data set
+# 4. Añadiendo datos faltantes al data set
 
 A través de la función summary empezamos comprobando que no hay datos faltantes en el data set. Por ello el grupo ha tenido que añadirlos manualmente para tratar de aproximarnos a un caso más real donde lo normal es encontrarlos y tener que lidiar con ellos.
 
@@ -189,7 +190,7 @@ missmap(red_wine, main="Missing Map")
 ```
 
 
-# 4. Partición del conjunto de datos: data set training y data set test
+# 5. Partición del conjunto de datos: data set training y data set test
 
 Una vez vistos por encima la estructura general de los datos y habiendo añadido los datos faltantes que nos hacian falta, pasamos a dividir el conjunto de datos en dos para diferenciar los que usaremos de entrenamiento de los que usaremos de test (viendo la cantidad de datos de la que disponemos, la distribución elegida ha sido: 20% test y 80% training). Establecemos una semilla que nos guarde de forma permanente la división que hacemos para que la distribución de los datos sea siempre la misma.
 
@@ -206,7 +207,7 @@ test
 ```
 
 
-# 5. Detección, tratamiento e imputación de datos faltantes
+# 6. Detección, tratamiento e imputación de datos faltantes
 
 Para la imputación de datos faltantes en las columnas "pH" y "sulphates", se ha decidido reemplazar todos sus NAs según los valores medianos de las mismas variables.
 
@@ -219,9 +220,9 @@ summary(train)
 
 ```
 
-# 6. EDA - Análisis exploratorio de datos
+# 7. EDA - Análisis exploratorio de datos
 
-## 6.1. Análisis de la distribución de las variables
+## 7.1. Análisis de la distribución de las variables
 
 Analizamos como se distribuyen las diferentes variables de nuestro dataset.
 
@@ -288,7 +289,7 @@ prop.table(table(train$quality))
 
 Con la gráfica y los datos podemos ver que la mayor parte de los vinos (sobre un 83% de ellos) están clasificados con valores de calidad de 5 y 6, sobre calificaciones que van de 0 a 10.
 
-## 6.2. Boxplot - análisis de la variables de relevancia y de los atípicos observados
+## 7.2. Boxplot - análisis de la variables de relevancia y de los atípicos observados
 
 Analizamos si nuestras variables tienen valores atípicos, cuales son sus valores medios y vemos sus intervalos de confianza, a través de gráficos de tipo Boxplot.
 
@@ -402,11 +403,11 @@ BoxPlot_volatile_acidity
 
 Apreciamos que los vinos con mejor puntuación en "quality" tienen en general menor cantidad de "ácido cítrico"volatile_acidity".
 
-## 6.3. Correlación entre variables
+## 7.3. Correlación entre variables
 
 Continuando con en análisis de las distintas variables del data set y el estudio de como se relacionan entre si, queremos ver de forma global como se correlacionan las variables numéricas que nos pueden llegar a servir para el modelo de predicción.
 
-### 6.3.2. Análisis de la correlación global del conjunto de variables
+### 7.3.2. Análisis de la correlación global del conjunto de variables
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 pairs(train)
@@ -426,7 +427,7 @@ round(res, 2)
 
 Vemos que las variables que más estan correlacionadas con la variable "quality" son: "volatile_acidity", "citric_acid", "alcohol" y "Log_sulphates".
 
-### 6.3.1. Análisis de la correlación bivariante
+### 7.3.1. Análisis de la correlación bivariante
 
 Realizamos un análisis bivariante para ver que variables están más correlacionadas, positva o negativamente, entre si.
 
@@ -576,39 +577,6 @@ train %>%
     geom_point(alpha = 0.2, colour = "green") + geom_smooth(formula = "y ~ x",
     method = "lm") + labs(title = "Relación entre variables Log_free_sulfur_dioxide y Log_total_sulfur_dioxide",
     x = "Log_free_sulfur_dioxide", y = "Log_total_sulfur_dioxide")
-
-```
-
-
-# 7. Cambios, modificaciones y transformaciones sobre el dataset de test
-
-Realizamos los cambios y modificaciones necesarias sobre el conjunto de datos de test, aplicados previamente sobre nuestro dataset de train.
-
-Imputamos los NAs del data set de test:
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test$pH[is.na(test$pH)]<-median(test$pH,na.rm = TRUE)
-test$sulphates[is.na(test$sulphates)]<-median(test$sulphates,na.rm = TRUE)
-summary(test)
-
-```
-
-Transformamos a logaritmicas las variables previamente normalizadas:
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test <- test %>% mutate(Log_residual_sugar = log(residual_sugar),
-                    Log_chlorides = log(chlorides),
-                    Log_free_sulfur_dioxide = log(free_sulfur_dioxide),
-                    Log_total_sulfur_dioxide = log(total_sulfur_dioxide),
-                    Log_sulphates = log(sulphates))
-
-```
-
-Modificamos nuestro dataset de test para que las variables transformadas a logaritmos sustituyan a las mismas pero aún sin transformar. Tendremos de ese modo un dataset con 12 variables también, pero 5 de ellas transformadas a logaritmos.
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test <- test %>% dplyr::select(-residual_sugar, -chlorides, -free_sulfur_dioxide, -total_sulfur_dioxide, -sulphates)
-head(test)
 
 ```
 
@@ -1217,7 +1185,7 @@ caret.glm <- train(as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulph
                    method = "glm",
                    family = "binomial",
                    data = train_glm,
-                   trControl = trainControl(method = "cv", number = 5))
+                   trControl = trainControl(method = "cv", number = 5, search = "grid"))
 caret.glm
 summary(caret.glm)
 
@@ -1258,7 +1226,7 @@ cm_train2$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de GLM obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_glm <- plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2))
+roc_glm <- plot.roc(as.numeric(train_glm$nota_vino), as.numeric(train_glm$y_pred_probs2), col = "blue")
 auc(roc_glm)
 
 ``` 
@@ -1382,7 +1350,7 @@ caret.knn = train(
   as.factor(nota_vino) ~ .,
   data = train_knn,
   method = "knn",
-  trControl = trainControl(method = "cv", number = 5),
+  trControl = trainControl(method = "cv", number = 5, search = "grid"),
   preProcess = c("center", "scale"),
   tuneGrid = expand.grid(k = seq(1, 101, by = 2))
 )
@@ -1417,8 +1385,8 @@ train_knn$y_pred_probs2 <- ifelse(train_knn$y_pred_probs2$`1` > 0.5, train_knn$y
 
 train_knn$y_pred2 <- ifelse(train_knn$y_pred_probs2 > 0.5, 1, 0)
 
-train_knn$y_pred_probs2
-train_knn
+#train_knn$y_pred_probs2
+#train_knn
 #train_knn$y_pred2
 
 ```  
@@ -1438,7 +1406,7 @@ cm_train_knn$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de KNN obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_knn <- plot.roc(as.numeric(train_knn$nota_vino), as.numeric(train_knn$y_pred_probs2))
+roc_knn <- plot.roc(as.numeric(train_knn$nota_vino), as.numeric(train_knn$y_pred_probs2), col = "green")
 auc(roc_knn)
 
 ``` 
@@ -1558,7 +1526,7 @@ De cara a obtener el mejor modelo posible realizaremos validación cruzada de 5 
 set.seed(1234)
 caret.tree <- train(
   as.factor(nota_vino) ~ alcohol + volatile_acidity + Log_sulphates + Log_total_sulfur_dioxide, data = train_tree, method = "rpart",
-  trControl = trainControl("cv", number = 5),
+  trControl = trainControl("cv", number = 5, search = "grid"),
   tuneLength = 20
   )
 # Plot model accuracy vs different values of
@@ -1628,7 +1596,7 @@ cm_train_tree$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_tree <- plot.roc(as.numeric(train_tree$nota_vino), as.numeric(train_tree$y_pred_probs2))
+roc_tree <- plot.roc(as.numeric(train_tree$nota_vino), as.numeric(train_tree$y_pred_probs2), col = "yellow")
 auc(roc_tree)
 
 ``` 
@@ -1743,8 +1711,8 @@ train_forest$y_pred_probs2 <- ifelse(train_forest$y_pred_probs2$`1` > 0.5, train
 train_forest$y_pred2 <- ifelse(train_forest$y_pred_probs2 > 0.5, 1, 0)
 
 #train_forest$y_pred_probs2
-train_forest$y_pred2
-train_forest
+#train_forest$y_pred2
+#train_forest
 
 ```  
 
@@ -1764,51 +1732,10 @@ cm_train_forest$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de Random Forest obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_rf <- plot.roc(as.numeric(train_forest$nota_vino), as.numeric(train_forest$y_pred_probs2))
+roc_rf <- plot.roc(as.numeric(train_forest$nota_vino), as.numeric(train_forest$y_pred_probs2), col = "red")
 auc(roc_rf)
 
 ``` 
-
-
-**Comprobación del modelo con los datos de test:**
-
-Pasamos a validar la capacidad predictora de nuestro modelo de árbol de decisión con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test_forest <- test %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
-test_forest
-
-table(test_forest$nota_vino)
-
-str(test_forest)
-
-``` 
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-
-test_forest$y_pred_probs2 <- predict(caret.rf, newdata = test_forest, type = "prob")
-test_forest$y_pred_probs2 <- ifelse(test_forest$y_pred_probs2$`1` > 0.5, test_forest$y_pred_probs2$`1`, 1-test_forest$y_pred_probs2$`0`)
-
-test_forest$y_pred2 <- ifelse(test_forest$y_pred_probs2 > 0.5, 1, 0)
-
-#test_forest$y_pred_probs2
-test_forest$y_pred2
-test_forest
-
-```  
-
-
-Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Random Forest obtenido:
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-cm_test_forest <- confusionMatrix(as.factor(test_forest$y_pred2), as.factor(test_forest$nota_vino), positive='1')
-cm_test_forest$table
-#result
-cm_test_forest$overall['Accuracy'] %>% round(2)
-cm_test_forest$byClass['Recall'] %>% round(2)
-cm_test_forest$byClass['Precision'] %>% round(2)
-
-```
 
 
 ## 10.5. MÉTODOS DE ENSAMBLE
@@ -1879,7 +1806,7 @@ Vemos los parámetros de "iter", "maxdepth" y "nu" que tiene el modelo ada de bo
 ```{r}
 set.seed(123)
 caret.ada <- train(as.factor(nota_vino) ~ ., method = "ada", data = train_en,
-                   trControl = trainControl(method = "cv", number = 5))
+                   trControl = trainControl(method = "cv", number = 5, search = "grid"))
 caret.ada
 
 ```
@@ -1918,8 +1845,8 @@ train_en$y_pred_probs2 <- ifelse(train_en$y_pred_probs2$`1` > 0.5, train_en$y_pr
 train_en$y_pred2 <- ifelse(train_en$y_pred_probs2 > 0.5, 1, 0)
 
 #train_forest$y_pred_probs2
-train_en$y_pred2
-train_en
+#train_en$y_pred2
+#train_en
 
 ```  
 
@@ -1938,7 +1865,7 @@ cm_train_en$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de Ada Boost obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_ada <- plot.roc(as.numeric(train_en$nota_vino), as.numeric(train_en$y_pred_probs2))
+roc_ada <- plot.roc(as.numeric(train_en$nota_vino), as.numeric(train_en$y_pred_probs2), col = "orange")
 auc(roc_ada)
 
 ```
@@ -1981,7 +1908,7 @@ set.seed(2)
 caret.xgb <- train(as.factor(nota_vino) ~ ., 
                    method = "xgbTree", 
                    data = train_xgb,
-                   trControl = trainControl(method = "cv", number = 5))
+                   trControl = trainControl(method = "cv", number = 5, search = "grid"))
 caret.xgb
 
 ```    
@@ -2016,9 +1943,9 @@ train_xgb$y_pred_probs2 <- ifelse(train_xgb$y_pred_probs2$`1` > 0.5, train_xgb$y
 
 train_xgb$y_pred2 <- ifelse(train_xgb$y_pred_probs2 > 0.5, 1, 0)
 
-#train_forest$y_pred_probs2
-train_xgb$y_pred2
-train_xgb
+#train_xgb$y_pred_probs2
+#train_xgb$y_pred2
+#train_xgb
 
 ```  
 
@@ -2037,7 +1964,7 @@ cm_train_xgb$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de XG Boost obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_xgb <- plot.roc(as.numeric(train_xgb$nota_vino), as.numeric(train_xgb$y_pred_probs2))
+roc_xgb <- plot.roc(as.numeric(train_xgb$nota_vino), as.numeric(train_xgb$y_pred_probs2), col = "purple")
 auc(roc_xgb)
 
 ```
@@ -2108,7 +2035,7 @@ train_svm$y_pred_probs2 <- predict(caret.svm, newdata = train_svm)
 
 #train_svm$y_pred2 <- ifelse(train_svm$y_pred_probs2 > 0.5, 1, 0)
 
-train_svm$y_pred_probs2
+#train_svm$y_pred_probs2
 #train_svm
 #train_svm$y_pred2
 
@@ -2129,7 +2056,7 @@ cm_train_svm$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_svm <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2))
+roc_svm <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2), col ="aquamarine3")
 auc(roc_svm)
 
 ``` 
@@ -2180,7 +2107,7 @@ train_svm$y_pred_probs2 <- predict(caret.svm.radial, newdata = train_svm)
 
 #train_svm$y_pred2 <- ifelse(train_svm$y_pred_probs2 > 0.5, 1, 0)
 
-train_svm$y_pred_probs2
+#train_svm$y_pred_probs2
 #train_svm
 #train_svm$y_pred2
 
@@ -2201,7 +2128,7 @@ cm_train_svm_radial$byClass['Precision'] %>% round(2)
 Reproducimos la curva ROC sobre el modelo final de SVM obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-roc_svm_radial <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2))
+roc_svm_radial <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2), col ="aquamarine4")
 auc(roc_svm_radial)
 
 ``` 
@@ -2369,10 +2296,6 @@ table(km6$cluster, train$quality)
 
 ```
 
-## 11.2. Clustering Jerárquico
-## 11.3. DBSCAN/HDBSCAN
-## 11.4. Mixture of gaussians
-## 11.5. Spectral clustering
 
 # 12. GAM - Generalised Additive Model
 
@@ -2479,17 +2402,6 @@ predictions <- predict(gam_mod_log2, newdata = train_gam,
 ```
 
 
-
-Probar en test?¿
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-test_gam <- test %>% mutate(nota_vino = case_when(quality >= 6 ~ 1, TRUE ~ 0)) %>% mutate (quality= NULL)
-
-test_gam
-
-table(test_gam$nota_vino)
-
-```   
-
 Explicando los predictores
 ```{r}
 head(predict(gam_mod_log2, type = "terms"))
@@ -2507,26 +2419,6 @@ plogis(sum(predict(gam_mod_log2, type = "terms")) + coef(gam_mod_log2)[1])
 
 ```
 
-## 12.2.1. Logistic GAM con datos de test
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-gam_mod_log2_test = gam(nota_vino ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
-    s(Log_total_sulfur_dioxide), data = test_gam, method = "REML", family = binomial)
-
-summary(gam_mod_log2_test)
-
-```  
-
-```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
-plogis(coef(gam_mod_log2_test)[1])
-
-```  
-
-```{r}
-plot(gam_mod_log2_test, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue", trans = plogis, shift = coef(gam_mod_log2_test)[1], 
-     seWithMean = TRUE, col = "purple")
-
-``` 
 
 # 13. Comparación entre los diferentes modelos
 
@@ -2556,7 +2448,7 @@ auc(roc_tree)
 
 ``` 
 
-**Random Forest:** Con un accuracy obtenido entorno al 76% y un AUC de aproximadamente un 93%.
+**Random Forest:** Con un accuracy obtenido entorno al 76% y un AUC de aproximadamente un 92%.
 
 ```{r}
 caret.rf
@@ -2572,7 +2464,7 @@ auc(roc_ada)
 
 ``` 
 
-**XGBoost:** Con un accuracy obtenido entorno al 79% y un AUC de aproximadamente un 89%.
+**XGBoost:** Con un accuracy obtenido entorno al 79% y un AUC de aproximadamente un 99%.
 
 ```{r}
 caret.xgb
@@ -2580,16 +2472,187 @@ auc(roc_xgb)
 
 ``` 
 
+
 ```{r}
 #GLM
-#pred.glm <- prediction(predict.glm, train_glm$nota_vino)
-#pref.glm <- (pred.glm, "tpr", "fpr")
-#plot(pref1, col = "blue", lwd = 2)
+pred1 <- predict(modelo_glm2, train_glm, type="response")
+pred.glm <- prediction(pred1, train_glm$nota_vino)
+perf.glm <- performance(pred.glm,"tpr", "fpr")
+plot(perf.glm, col = "blue", lwd = 2)
 
+#KNN  
+pred2 <- predict(caret.knn, newdata = train_knn, type = "prob")
+pred22 <- ifelse(pred2$`1` > 0.5, pred2$`1`, 1-pred2$`0`)
+pred.knn <- prediction(pred22, train_knn$nota_vino)
+perf.knn <- performance(pred.knn,"tpr", "fpr")
+plot(perf.knn, add = TRUE, col = "green", lwd = 2)
+
+#DECISION TREE
+pred3 <- predict(caret.tree, newdata = train_tree, type = "prob")
+pred33 <- ifelse(pred3$`1` > 0.5, pred3$`1`, 1-pred3$`0`)
+pred.tree <- prediction(pred33, train_tree$nota_vino)
+perf.tree <- performance(pred.tree,"tpr", "fpr")
+plot(perf.tree, add = TRUE, col = "yellow", lwd = 2)
+
+#RANDOM FOREST
+pred4 <- predict(caret.rf, newdata = train_forest, type = "prob")
+pred44 <- ifelse(pred4$`1` > 0.5, pred4$`1`, 1-pred4$`0`)
+pred.rf <- prediction(pred44, train_forest$nota_vino)
+perf.rf <- performance(pred.rf,"tpr", "fpr")
+plot(perf.rf, add = TRUE, col = "red", lwd = 2)
+
+#ADA BOOST
+pred5 <- predict(caret.ada, newdata = train_en, type = "prob")
+pred55 <- ifelse(pred5$`1` > 0.5, pred5$`1`, 1-pred5$`0`)
+pred.ada <- prediction(pred55, train_en$nota_vino)
+perf.ada <- performance(pred.ada,"tpr", "fpr")
+plot(perf.ada, add = TRUE, col = "orange", lwd = 2)
+
+#XG BOOST
+pred6 <- predict(caret.xgb, newdata = train_xgb, type = "prob")
+pred66 <- ifelse(pred6$`1` > 0.5, pred6$`1`, 1-pred6$`0`)
+pred.xgb <- prediction(pred66, train_xgb$nota_vino)
+perf.xgb <- performance(pred.xgb,"tpr", "fpr")
+plot(perf.xgb, add = TRUE, col = "purple", lwd = 2)
 
 ``` 
 
-# 14. Comprobación del mejor modelo con datos de test
+
+# 14. Comprobación delos resultados con los datos de test
+
+## 14.1. Cambios, modificaciones y transformaciones sobre el dataset de test
+
+Realizamos los cambios y modificaciones necesarias sobre el conjunto de datos de test, aplicados previamente sobre nuestro dataset de train.
+
+Imputamos los NAs del data set de test al valor de la mediana de la variable de referencia:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test$pH[is.na(test$pH)]<-median(test$pH,na.rm = TRUE)
+test$sulphates[is.na(test$sulphates)]<-median(test$sulphates,na.rm = TRUE)
+summary(test)
+
+```
+
+Transformamos a logarítmicas las variables previamente normalizadas:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test <- test %>% mutate(Log_residual_sugar = log(residual_sugar),
+                    Log_chlorides = log(chlorides),
+                    Log_free_sulfur_dioxide = log(free_sulfur_dioxide),
+                    Log_total_sulfur_dioxide = log(total_sulfur_dioxide),
+                    Log_sulphates = log(sulphates))
+
+```
+
+Modificamos nuestro dataset de test para que las variables transformadas a logaritmos sustituyan a las mismas pero aún sin transformar. Tendremos de ese modo un dataset con 12 variables también, pero 5 de ellas transformadas a logaritmos.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test <- test %>% dplyr::select(-residual_sugar, -chlorides, -free_sulfur_dioxide, -total_sulfur_dioxide, -sulphates)
+head(test)
+
+```
+
+
+## 14.2. Comprobación del mejor modelo con datos de test
+
+**Comprobación del modelo de Random Forest con los datos de test:**
+
+Pasamos a validar la capacidad predictora de nuestro modelo de Random Forest con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_forest <- test %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+test_forest
+
+table(test_forest$nota_vino)
+
+str(test_forest)
+
+``` 
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+test_forest$y_pred_probs2 <- predict(caret.rf, newdata = test_forest, type = "prob")
+test_forest$y_pred_probs2 <- ifelse(test_forest$y_pred_probs2$`1` > 0.5, test_forest$y_pred_probs2$`1`, 1-test_forest$y_pred_probs2$`0`)
+
+test_forest$y_pred2 <- ifelse(test_forest$y_pred_probs2 > 0.5, 1, 0)
+
+#test_forest$y_pred_probs2
+#test_forest$y_pred2
+#test_forest
+
+```  
+
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de Random Forest obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_test_forest <- confusionMatrix(as.factor(test_forest$y_pred2), as.factor(test_forest$nota_vino), positive='1')
+cm_test_forest$table
+#result
+cm_test_forest$overall['Accuracy'] %>% round(2)
+cm_test_forest$byClass['Recall'] %>% round(2)
+cm_test_forest$byClass['Precision'] %>% round(2)
+
+```
+
+Comprobamos el área bajo la curva para el modelo de Random Forest en el conjunto de datos de test:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_rf_test <- plot.roc(as.numeric(test_forest$nota_vino), as.numeric(test_forest$y_pred_probs2), col = "red")
+auc(roc_rf_test)
+
+``` 
+
+**Comprobación del modelo de XG Boost con los datos de test:**
+
+Pasamos a validar la capacidad predictora de nuestro modelo de XG Boost con el conjunto de datos de test. Para ello lo primero de todo, creamos de nuevo la variable binaria "nota_vino" sobre nuestro conjunto de datos en test.
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+test_xgb <- test %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
+test_xgb
+
+table(test_xgb$nota_vino)
+
+str(test_xgb)
+
+``` 
+
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+
+test_xgb$y_pred_probs2 <- predict(caret.xgb, newdata = test_xgb, type = "prob")
+test_xgb$y_pred_probs2 <- ifelse(test_xgb$y_pred_probs2$`1` > 0.5, test_xgb$y_pred_probs2$`1`, 1-test_xgb$y_pred_probs2$`0`)
+
+test_xgb$y_pred2 <- ifelse(test_xgb$y_pred_probs2 > 0.5, 1, 0)
+
+#test_xgb$y_pred_probs2
+#test_xgb$y_pred2
+#test_xgb
+
+```  
+
+
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de XG Boost obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_test_xgb <- confusionMatrix(as.factor(test_xgb$y_pred2), as.factor(test_xgb$nota_vino), positive='1')
+cm_test_xgb$table
+#result
+cm_test_xgb$overall['Accuracy'] %>% round(2)
+cm_test_xgb$byClass['Recall'] %>% round(2)
+cm_test_xgb$byClass['Precision'] %>% round(2)
+
+```
+
+Comprobamos el área bajo la curva para el modelo de XG Boost en el conjunto de datos de test:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_xgb_test <- plot.roc(as.numeric(test_xgb$nota_vino), as.numeric(test_xgb$y_pred_probs2), col = "purple")
+auc(roc_xgb_test)
+
+``` 
+
 
 # 15. Conclusiones generales del estudio
 
@@ -2597,7 +2660,7 @@ auc(roc_xgb)
 
 * **Reducción de la Dimensionalidad (PCA y t-SNE):**
 
-* **Regresión Logística:** 
+* **Regresión Logística (GLM):** 
 
 * **KNN:**
 
@@ -2607,9 +2670,13 @@ auc(roc_xgb)
 
 * **Random Forest:**
 
-* **Ajuste de Hiperparámetros:**
+* **SVM:**
 
-* **Clustering (K-means. Jerárquico y HDBSCAN):**
+* **Ajuste de Hiperparámetros (Tuning):**
+
+* **Validación cruzada (Cross Validation):**
+
+* **Clustering (K-means):**
 
 * **GAM:**
 
