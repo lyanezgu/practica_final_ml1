@@ -2056,7 +2056,7 @@ cm_train_svm$byClass['Precision'] %>% round(2)
 
 ```
 
-Reproducimos la curva ROC sobre el modelo final de Decision Tree obtenido:
+Reproducimos la curva ROC sobre el modelo final SVM obtenido:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 roc_svm <- plot.roc(as.numeric(train_svm$nota_vino), as.numeric(train_svm$y_pred_probs2), col ="aquamarine3")
@@ -2077,9 +2077,12 @@ modelLookup('svmRadial')
 ```{r}
 set.seed(6666)
 # Fit the model 
+hiperparametros <- expand.grid(sigma = seq(0.001, 1,length = 20),
+                               C = seq(0.1, 2,length = 20))
+
 caret.svm.radial <- train(as.factor(nota_vino) ~., data = train_svm, 
                    method = "svmRadial", 
-                   trControl = trainControl("cv", number = 5, search = "grid", returnResamp = "final"),
+                   trControl = trainControl("cv", number = 5, search = "grid", returnResamp = "final"),tuneGrid = hiperparametros,
                    preProcess = c("center","scale"),
                    tuneLength = 20)
 
@@ -2304,7 +2307,7 @@ table(km6$cluster, train$quality)
 
 ## 12.1. Con Linear GAM
 
-¿Será con variable respuesta continua?
+
 ```{r}
 gam_mod <- gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
     s(Log_chlorides) + s(pH) + s(Log_total_sulfur_dioxide) + s(citric_acid) + 
