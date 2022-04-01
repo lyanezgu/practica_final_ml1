@@ -24,9 +24,10 @@ La práctica a desarrollar consiste en la elaboración y presentación de un inf
 
 ## 1.1. Lenguaje de programación y herramienta de control de versiones utilizados
 
-El grupo eligió trabajar en lenguage R (RStudio version 1.4.1717) y utilizar como herramienta de control de versiones GitHub. El proyecto "/practica_ml" fue creado por Isabela Ignacio (usuario IsaPires1329)y compartido con los restantes participantes del grupo Luisa Yánez (usuario lyanezgu) y Miguel García (usuario mgarciasanc2021).
+El grupo eligió trabajar en lenguage R (RStudio version 1.4.1717) y utilizar como herramienta de control de versiones GitHub. El proyecto "/practica_final_ml1" fue creado por LuisaYánez (usuario lyanezgu)y compartido con los restantes participantes del grupo Miguel García (usuario mgarciasanc2021).
 
-**Link del proyecto en GitHub:** <https://github.com/IsaPires1329/practica_ml.git>.
+**Link del proyecto en GitHub:** 
+https://github.com/lyanezgu/practica_final_ml1
 
 
 ## 1.2. Paquestes R utilizados
