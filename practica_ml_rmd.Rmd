@@ -1,7 +1,7 @@
 ---
 title: "Práctica Machine Learning I"
 author: "Miguel García y Luisa Yánez"
-date: "23/04/2022"
+date: "22/04/2022"
 output:
  html_document:
   code_folding: hide
@@ -24,7 +24,7 @@ La práctica a desarrollar consiste en la elaboración y presentación de un inf
 
 ## 1.1. Lenguaje de programación y herramienta de control de versiones utilizados
 
-El grupo eligió trabajar en lenguage R (RStudio version 1.4.1717) y utilizar como herramienta de control de versiones GitHub. El proyecto "/practica_final_ml1" fue creado por LuisaYánez (usuario lyanezgu)y compartido con los restantes participantes del grupo Miguel García (usuario mgarciasanc2021).
+El grupo eligió trabajar en lenguage R (RStudio version 1.4.1717) y utilizar como herramienta de control de versiones GitHub. El proyecto "/practica_final_ml1" fue creado por Luisa Yánez (usuario "lyanezgu") y compartido con el otro integrante del grupo, Miguel García (usuario "mgarciasanc2021").
 
 **Link del proyecto en GitHub:** 
 https://github.com/lyanezgu/practica_final_ml1
@@ -210,7 +210,7 @@ test
 
 # 6. Detección, tratamiento e imputación de datos faltantes
 
-Para la imputación de datos faltantes en las columnas "pH" y "sulphates", se ha decidido reemplazar todos sus NAs según los valores medianos de las mismas variables.
+Para la imputación de datos faltantes en las columnas "pH" y "sulphates", se ha decidido reemplazar todos sus NAs según los valores medianos de las mismas variables a las que se referencian.
 
 Con la función summary se comprueba que ya no hay más datos faltantes en el data set train.
 
@@ -792,6 +792,7 @@ prcomp_train <- prcomp(train[,-6])
 prcomp_train
 
 ```
+
 Las desviaciones típicas son los autovalores de la matriz de correlaciones, y representan la variabilidad en cada componente. A mayor valor, más relevante es la variable correspondiente a efectos de visualización. Si queremos visualizar la importancia relativa de cada componente, haremos lo siguiente:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
@@ -806,7 +807,7 @@ summary(prcomp_train)
 
 ```
 
-Para solucionar el problema de que una variable tenga más relevancia y sea más influyente por el hecho de tener más magnitud, se debe realizar una estandarización:
+Para solucionar el problema de que una variable tenga más relevancia y sea más influyente por el hecho de tener más magnitud, se debe realizar una estandarización o escalado:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 prcomp_train <- prcomp(train[,-6], centre = TRUE, scale = TRUE)
@@ -998,6 +999,8 @@ plot(tsne$Y, col = "black", bg=train_tsne$nota_vino , pch = 21, cex = 1.5, main=
 
 Binarizando la variable respuesta tampoco sacamos demasiado en claro, no siendo posible aplicar una reducción de la dimensión sobre nuestros datos.
 
+Con lo analizado hasta el momento con PCA y t-SNE sobre técnicas de la reducción de la dimensión, y viendo que tenemos un dataset con no tantas variables (11 variables explicativas), seguiremos en los próximos apartados con las variables sin aplicar dicha reducción.
+
 # 10. Aprendizaje supervisado
 
 ## 10.1. GLM - Generalized Lineal Model
@@ -1005,8 +1008,6 @@ Binarizando la variable respuesta tampoco sacamos demasiado en claro, no siendo 
 ### 10.1.1. Creación de variable binaria y análisis de relaciones entre variables
 
 Lo primero de todo, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0")
-
-    
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_glm <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
@@ -1064,7 +1065,7 @@ train_glm %>% ggplot(aes(x=Log_total_sulfur_dioxide , fill=factor(nota_vino))) +
 
 ```  
 
-En términos generales vemos como los vinos analizados que estan en la categoria de aprobados, tienen un mayor valor de "alcohol", levenmente mayor valor de "Log_sulphates", menor valor de "volatile_acidity", levemente menor "density", mayor "citric_acid" y menor valor de "Log_total_sulfur_dioxide".
+En términos generales vemos como los vinos analizados que estan en la categoria de aprobados, tienen un mayor valor de "alcohol", levemente mayor valor de "Log_sulphates", menor valor de "volatile_acidity", levemente menor "density", mayor "citric_acid" y menor valor de "Log_total_sulfur_dioxide".
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 # nota_vino vs fixed_acidity
@@ -1194,7 +1195,6 @@ summary(caret.glm)
 
 ```
 
-
 Con estos datos entendemos que con el modelo desarrollado, en alrededor del 74/75% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
 
 ```{r}
@@ -1202,7 +1202,7 @@ confusionMatrix(caret.glm)
 
 ```
 
-Evaluación del rendimiento predictivo del modelo GLM presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo GLM presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_glm$y_pred_probs2 <- predict(caret.glm, train_glm, type="prob")
@@ -1250,8 +1250,6 @@ str(train_knn)
 
 ```     
 
-
-
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
 #REFERENCIA:https://www.edureka.co/blog/knn-algorithm-in-r/
@@ -1265,7 +1263,7 @@ str(train_knn)
 
 ```     
 
-Lo primero de todo calculamos el número de observaciones que tiene nuestro dataset en train. Queremos así ver de inicio el número de "K" o vecinos con el que cuenta nuestro conjunto de datos de entrenamiento, para posteriormente y en base a ello aproximar el óptimo valor de "K".
+Lo primero de todo calculamos el número de observaciones que tiene nuestro dataset en train. Queremos así ver de inicio el número de "K" o vecinos con el que cuenta nuestro conjunto de datos de entrenamiento, para posteriormente y en base a ello aproximar el posible valor óptimo de "K".
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 NROW <- NROW(train_knn)
@@ -1329,7 +1327,7 @@ error_knn_simple_36
 
 ```
 
-Vemos que en ambos casos los resultados son muy parecidos obteniendo un accuracy de entorno al 73/74% de precisión.
+Vemos que en ambos casos los resultados son muy parecidos obteniendo un accuracy de entorno al 73/74% de precisión y un cercano al 26%.
 
 ### 10.2.2. KNN - Cross Validation, Hiperparámetros y Evaluación del modelo
 
@@ -1380,7 +1378,7 @@ get_best_result(caret.knn)
 Con estos datos entendemos que con el modelo desarrollado, en alrededor del 76/77% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
 
 
-Evaluación del rendimiento predictivo del modelo KNN presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo KNN presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_knn$y_pred_probs2 <- predict(caret.knn, newdata = train_knn, type = "prob")
@@ -1438,7 +1436,7 @@ str(train_tree)
 
 ``` 
 
-Creamos un modelo de árbol de decisión inicial básico y sin podar:
+Creamos un modelo de árbol de decisión inicial básico y sin podar utilizando las 11 variables predictoras que tenemos a nuestra disposición y utiizando el método de "Gini" como medida de la impureza:
 
 ```{r}
 # árbol de clasificación con las opciones por defecto (cp = 0.01 y split = "gini") con el comando:
@@ -1570,7 +1568,7 @@ get_best_result(caret.tree)
 
 Obtenemos finalmente haciendo validación cruzada una precisión del 72/73%, con un modelo que ha sido comprobado como robusto y generalizable para funcionar previsiblemente en otro conjunto de datos diferente.
 
-Evaluación del rendimiento predictivo del modelo Decision Tree presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo Decision Tree presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1628,7 +1626,7 @@ str(train_forest)
 
 ```     
 
-Creamos el modelo base de bosque de árboles:
+Creamos el modelo base de random forest realizando una simulación con 1000 árboles:
 
 ```{r, include=TRUE, message=FALSE, include=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 set.seed(4343)
@@ -1704,7 +1702,7 @@ get_best_result(caret.rf)
 ``` 
 
 
-Evaluación del rendimiento predictivo del modelo Random Forest presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo Random Forest presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1740,6 +1738,7 @@ auc(roc_rf)
 
 ``` 
 
+Se obtiene alrededor de un 92% de área bajo la curva.
 
 ## 10.5. MÉTODOS DE ENSAMBLE
 
@@ -1838,7 +1837,7 @@ get_best_result(caret.ada)
 ``` 
 
 
-Evaluación del rendimiento predictivo del modelo Ada Boost presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo Ada Boost presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1873,6 +1872,7 @@ auc(roc_ada)
 
 ```
 
+Se obtiene alrededor de un 89% de área bajo la curva.
 
 ### 10.5.2. XGBoost - Extreme Gradient Boosting
 
@@ -1937,7 +1937,7 @@ varImp(caret.xgb)
 
 ```
 
-Evaluación del rendimiento predictivo del modelo XG Boost presentado con las datos de train:
+Evaluación del rendimiento predictivo del modelo XG Boost presentado con las datos de train :
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1952,7 +1952,7 @@ train_xgb$y_pred2 <- ifelse(train_xgb$y_pred_probs2 > 0.5, 1, 0)
 
 ```  
 
-Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de XG Boost obtenido:
+Reproducimos la matriz de confusión y las métricas de evaluación sobre el modelo final de XG Boost obtenido (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 cm_train_xgb <- confusionMatrix(as.factor(train_xgb$y_pred2), as.factor(train_xgb$nota_vino), positive='1')
@@ -1972,6 +1972,7 @@ auc(roc_xgb)
 
 ```
 
+Se obtiene alrededor de un 99% de área bajo la curva.
 
 ## 10.6. SVM Lineal - Support Vector Machines Lineal
 
@@ -1985,8 +1986,6 @@ En nuestro dataset de train y test, hemos creado la variable binaria “nota_vin
 
 ```
 
-### 10.6.1. Modelo SVM Lineal
-
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_svm <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
 train_svm
@@ -1997,10 +1996,16 @@ str(train_svm)
 
 ``` 
 
+### 10.6.1. Modelo SVM Lineal
+
+Observamos los hiperparámetros a configurar en el modelo de SVM Lineal:
+
 ```{r}
 modelLookup('svmLinear')
 
 ```
+
+Creamos el modelo realizando un centrado y escalado de las variables y con validación cruzada para comprobar su robustez y generalización:
 
 ```{r}
 set.seed(5555)
@@ -2029,6 +2034,9 @@ get_best_result(caret.svm)
 
 ``` 
 
+Los mejores resultados se obtienen configurando el parámetro C de "Coste" en 0.9 y da como resultado un Accuracy del 75/76%.
+
+Evaluación del rendimiento predictivo del modelo SVM Lineal presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -2068,11 +2076,15 @@ Se obtiene alrededor de un 75/76% de área bajo la curva.
 
 ### 10.6.2. Modelo SVM Radial
 
+Observamos los hiperparámetros a configurar en el modelo de SVM Radial:
+
 ```{r}
 
 modelLookup('svmRadial')
 
 ```
+
+Creamos el modelo realizando un centrado y escalado de las variables y con validación cruzada para comprobar su robustez y generalización:
 
 ```{r}
 set.seed(6666)
@@ -2104,6 +2116,9 @@ get_best_result(caret.svm.radial)
 
 ``` 
 
+Los mejores resultados se obtienen configurando el parámetro C de "Coste" en 0.3 y "sigma" en 0.21, y da como resultado un Accuracy del 77%.
+
+Evaluación del rendimiento predictivo del modelo SVM Lineal presentado con las datos de train (metrica de evaluación utilizada de referencia: "Accuracy" y punto de corte utilizado: 0.5):
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -2144,6 +2159,8 @@ Se obtiene alrededor de un 80/81% de área bajo la curva.
 # 11. Aprendizaje no supervisado
 
 ## 11.1. K-MEANS
+
+En nuestro dataset de train, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6) o suspensas (quality < 6).
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 train_km <- train %>% mutate(nota_vino = case_when(quality >= 6 ~1, TRUE ~ 0)) %>% mutate (quality= NULL)
@@ -2191,7 +2208,7 @@ PlotHartigan(wholesaleBest)
 
 ```
 
-o vemos un codo muy definido, y el k optimo podría estar entre 3 y 7 clusters.
+No vemos un codo muy definido, y el k optimo podría estar entre 3 y 7 clusters.
 
 
 ```{r, warning =FALSE}
@@ -2206,10 +2223,11 @@ gap_stat <- clusGap(train_kmeans_s,
 fviz_gap_stat(gap_stat)
 
 ```
+No vemos un codo muy definido, y el k optimo podría estar entre 2 y 7 clusters.
 
 ### 11.1.1. K-Means con K = 2
 
-Desarrollamos el Clustering con K-means con el número óptimo de centroides "K" = 2:
+Desarrollamos el Clustering con K-means con el número óptimo de centroides "K" = 2 (Coincidiendo con la división binaria de vino "Aprobado" y "Suspenso" que nos interesa para nuestro análisis):
 
 ```{r}
 #make this example reproducible
@@ -2221,6 +2239,8 @@ km2 <- kmeans(train_kmeans_s, centers = 2, nstart = 25)
 km2
 
 ```
+
+Vemos que el tamaño de los dos grupos esta bien balanceado sin diferencias considerables, y los valores de los centroides para cada una de las 4 varibales:
 
 ```{r}
 km2$size
@@ -2250,7 +2270,7 @@ table(km2$cluster, train_km$nota_vino)
 
 ```
 
-Obtenemos un accuracy entorno al 70% realizando un cluster con 2 centroides.
+Obtenemos un accuracy entorno al 70% realizando un cluster con 2 centroides. La gran mayoría de los vinos "Suspensos" (anotados como "0") se han ubicado en el clúster número 1, y la mayoría de los vino "Aprobados" se ubican en el clúster número 2 (anotados como "1").
 
 Vemos como se reparten los cluster en los diferentes grupos según la variable "quality"
 
@@ -2258,6 +2278,8 @@ Vemos como se reparten los cluster en los diferentes grupos según la variable "
 table(km2$cluster, train$quality)
 
 ```
+
+Viendo los dos clúster en función de la variable categórica original "quality" en vez de con la binarizada "nota_vino", vemos logicamnete en el mismo comportamiento descrito con anterioridad. Vinos frecuentemente suspensos se ubican en el primer clúster y vino normalmente aprobados en el segundo. Entre medias están los vino que no se terminand e clasificar bien y que suponen errores de tipo I y II en nuestra predicción, lastrando así el accuracy.
 
 ### 11.1.2. K-Means con K = 6
 
@@ -2273,6 +2295,9 @@ km6 <- kmeans(train_kmeans_s, centers = 6, nstart = 25)
 km6
 
 ```
+
+Vemos que el tamaño de los dos grupos esta bien balanceado sin diferencias considerables, y los valores de los centroides para cada una de las 4 varibales:
+
 
 ```{r}
 km6$size
