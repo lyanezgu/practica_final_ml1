@@ -2332,6 +2332,7 @@ table(km6$cluster, train$quality)
 
 ## 12.1. Con Linear GAM
 
+Generamos una primera aproximación creando un modelo de GAM lineal.
 
 ```{r}
 gam_mod <- gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
@@ -2344,7 +2345,6 @@ coef(gam_mod)
 summary(gam_mod)
 
 ```
-Falta la variable log clorides-------
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 gam_mod2 = gam(quality ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates)+s(Log_chlorides),data = train, method = "REML")
@@ -2364,6 +2364,9 @@ gam.check(gam_mod2)
 
 ```
 
+Al tener una variable respuesta de tipo categórica, el modelo linaeal de GAM no vale para nuestros datos ya que no se ajusta.
+
+
 ## 12.2. Con Logistic GAM
 
 Lo primero de todo, creamos la variable binaria "nota_vino", para que en función de "quality" nos diga los vinos con calificaciones aprobadas (quality >= 6, anotados con un "1") o suspensas (quality < 6, anotados con un "0")
@@ -2378,8 +2381,7 @@ table(train_gam$nota_vino)
 
 ```  
 
-Para aplicar GAM logstico a nuestro problema, utilizamos el paquete mgcv y la familia=binomial que indica a la función GAM que nuestra variable respuesta será 0 o 1, es decir, vino bueno o vino malo. Las variables están envueltas por la función s, que es una función que espeficia que queremos que la relación sea flexible.
-
+Para aplicar GAM logstico a nuestro problema, utilizamos el paquete mgcv y la familia = binomial que indica a la función GAM que nuestra variable respuesta será 0 o 1, es decir, vino aprobado (1) o vino suspenso (0). Las variables están envueltas por la función "s", que es una función que específica con la que queremos que la relación sea flexible y se adapte.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 gam_mod_log = gam(nota_vino ~ s(alcohol) + s(volatile_acidity) + s(Log_sulphates) + 
@@ -2399,7 +2401,7 @@ summary(gam_mod_log2)
 
 ```  
 
-Aquí, el valor del intercepto es 0.26735 que esta en escala logaritmica. Podemos utilizar la función logística plogis() para convertirlo en una probabilidad.
+Aquí, el valor del intercepto es 0.26735 que esta en escala logarítmica. Podemos utilizar la función logística "plogis()" para tratar de convertirlo en una probabilidad.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 plogis(0.26773)
@@ -2407,9 +2409,9 @@ plogis(coef(gam_mod_log2)[1])
 
 ```  
 
-Esto significa que el modelo predice una probabilidad base del 57% de un resultado positivo, es decir que un vino esta aprobado. 
+Esto significa que el modelo predice una probabilidad base del 56/57% de un resultado positivo, es decir que un vino sea aprobado. 
 
-
+Graficamos el comportanmiento de las diferentes variables explicativas:
 
 ```{r}
 plot(gam_mod_log2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightblue", trans = plogis, shift = coef(gam_mod_log2)[1], 
@@ -2423,7 +2425,7 @@ plot(gam_mod_log2, residuals = TRUE, pch = 1, shade = TRUE, shade.col = "lightbl
 
 ```
 
-Calculamos la prediccion y los errores
+Calculamos la predicción y los errores:
 
 ```{r}
 
@@ -2433,7 +2435,8 @@ predictions <- predict(gam_mod_log2, newdata = train_gam,
 ```
 
 
-Explicando los predictores
+Explicando los predictores:
+
 ```{r}
 head(predict(gam_mod_log2, type = "terms"))
 
@@ -2444,11 +2447,44 @@ predict(gam_mod_log2, type = "terms")[1, ]
 
 ```
 
+Analizamos el modelo final de GAM Logístico planteado:
 
 ```{r}
-plogis(sum(predict(gam_mod_log2, type = "terms")) + coef(gam_mod_log2)[1])
+summary(gam_mod_log2)
 
 ```
+
+
+Evaluación del rendimiento predictivo del modelo GAM Logístico presentado con las datos de train:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+train_gam$y_pred_probs <- predict(gam_mod_log2, train_gam, type="response")
+train_gam$y_pred <- ifelse(train_gam$y_pred_probs > 0.5, 1, 0)
+
+#train_gam$y_pred_probs
+#train_gam$y_pred
+
+``` 
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+cm_train_gam <- confusionMatrix(as.factor(train_gam$y_pred), as.factor(train_gam$nota_vino), positive='1')
+cm_train_gam$table
+#result
+cm_train_gam$overall['Accuracy'] %>% round(2)
+cm_train_gam$byClass['Recall'] %>% round(2)
+cm_train_gam$byClass['Precision'] %>% round(2)
+
+``` 
+
+Reproducimos la curva ROC sobre el modelo final de GAM logístico obtenido:
+
+```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+roc_gam <- plot.roc(as.numeric(train_gam$nota_vino), as.numeric(train_gam$y_pred_probs), col = "pink")
+auc(roc_gam)
+
+``` 
+
+Se obtiene alrededor de un 84% de área bajo la curva.
 
 
 # 13. Comparación entre los diferentes modelos
