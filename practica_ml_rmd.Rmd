@@ -781,6 +781,8 @@ acf(mejor_modelo$residuals)
 
 # ML1 - MACHINE LEARNING 1
 
+En esta segunda parte del trabajo, trataremos de aplicar diferentes técnicas y algoritmos sobre nuestros datos, de forma que nos lleven a la mejor predición y clasificación posible de la calidad del vino analizado. Para la comparación y selección del mejor algoritmo utilizaremos como métrica de evaluación el "Accuracy" y trataremos de establecer el mejor punto de corte posible que maximice la misma.
+
 # 9. Técnicas de reducción de la dimensionalidad
 
 ## 9.1. PCA - Principal Component Analysis
@@ -807,7 +809,7 @@ summary(prcomp_train)
 
 ```
 
-Para solucionar el problema de que una variable tenga más relevancia y sea más influyente por el hecho de tener más magnitud, se debe realizar una estandarización o escalado:
+Para solucionar el problema de que una variable tenga más relevancia y sea más influyente por el hecho de tener más magnitud, se debe realizar una estandarización o escalado con los datos de las variables:
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 prcomp_train <- prcomp(train[,-6], centre = TRUE, scale = TRUE)
@@ -945,7 +947,7 @@ ggbiplot(prcomp_train_2, obs.scale = 1, var.scale = 1, groups = train_pca$nota_v
 
 ``` 
 
-Vemos que los resultados obtenidos son los mismos, no obteniendo ninguna mejora. Con esta forma de mostrar los datos realizamos una visualización más clara de lo que nos referiamos.Los puntos más abajo del gráfico se corresponden en general a vinos "aprobados" (puntos de color rosado - vinos con nota igual o superior a 6) y los de más arriba se referencian en general a vinos "suspensos" (puntos de color azulado - vino con notas inferiores a 6). Fuera de eso, y con tan solo un 47.10% de la varianza explicada por las 2 primeras PC, no se aprecian más patrones o conclusiones en los datos.
+Vemos que los resultados visualizados son los mismos, no obteniendo ninguna mejora destacable. Con esta forma de mostrar los datos realizamos una visualización más clara de lo que nos referiamos.Los puntos más abajo del gráfico se corresponden en general a vinos "aprobados" (puntos de color rosado - vinos con nota igual o superior a 6) y los de más arriba se referencian en general a vinos "suspensos" (puntos de color azulado - vino con notas inferiores a 6). Fuera de eso, y con tan solo un 47.10% de la varianza explicada por las 2 primeras PC, no se aprecian más patrones o conclusiones en los datos.
 
 
 ## 9.2. t-SNE - t-distributed stochastic neighbor embedding
@@ -971,7 +973,7 @@ plot(tsne$Y, col = "black", bg=train_fquality$quality , pch = 21, cex = 1.5, mai
 
 ``` 
 
-Como vemos los resultados, como en PCA, no son satisfactorios, siendo no deseable la apliclación de estas técnicas en nuestro dataset.
+Como vemos los resultados, como en PCA, no son satisfactorios, siendo no deseable la apliclación de estas técnicas de reducción de la dimensión en nuestro dataset.
 
 ### 9.2.1. Análisis t-SNE con creación de variable categórica binarizada
 
@@ -1002,6 +1004,8 @@ Binarizando la variable respuesta tampoco sacamos demasiado en claro, no siendo 
 Con lo analizado hasta el momento con PCA y t-SNE sobre técnicas de la reducción de la dimensión, y viendo que tenemos un dataset con no tantas variables (11 variables explicativas), seguiremos en los próximos apartados con las variables sin aplicar dicha reducción.
 
 # 10. Aprendizaje supervisado
+
+En este apartado analizaremos diferentes algoritmos supervisados (con datos etiquetados para su predicción o clasificación) sobre nuestro conjunto de datos sobre vinos.
 
 ## 10.1. GLM - Generalized Lineal Model
 
@@ -1161,14 +1165,14 @@ cm_train$byClass['Precision'] %>% round(2)
 
 ``` 
 
-Viendo el valor de las metricas obtenidas, el valor de Accuracy (número de predicciones correctas/número total de predicciones) se situa en el 75%, el de Precision (positivos verdaderos/(positivos verdaderos + falsos positivos)) se situa en un 77%, y el de Recall o Sensitividad (positivos verdaderos/(positivos verdaderos/falsos negativos)) en un 75%.
+Viendo el valor de las metricas obtenidas (con un punto de corte en 0.5), el valor de Accuracy (número de predicciones correctas/número total de predicciones) se situa en el 75%, el de Precision (positivos verdaderos/(positivos verdaderos + falsos positivos)) se situa en un 77%, y el de Recall o Sensitividad (positivos verdaderos/(positivos verdaderos/falsos negativos)) en un 75%.
 
 Con estos datos entendemos que con el modelo desarrollado, en alrededor del 75% de los casos este será capaz de predecir si un vino aprueba en nota porque es razonablemente bueno (nota_vino >= 6) o sino suspende porque es realmente malo (nota_vino < 6).
 
 
 ### 10.1.3. GLM - Cross Validation, Hiperparámetros y Evaluación del modelo
 
-Tratamos de aplicar Cross Validation sobre el modelo de GLM y realizar una selección de hiperparámetros:
+Tratamos de aplicar Cross Validation sobre el modelo de GLM y realizar una selección de hiperparámetros (se busca tener un modelo robusto, generalizable y comparable con el resto para la posterior selección del mejor):
 
 Vemos primero cuales son las posibles variables que tienes el modelo para tratar de configurar. Cómo se puede ver, el modelo GLM no tiene la posibilidad de ajustar hiperparámetros.
 
@@ -1436,7 +1440,7 @@ str(train_tree)
 
 ``` 
 
-Creamos un modelo de árbol de decisión inicial básico y sin podar utilizando las 11 variables predictoras que tenemos a nuestra disposición y utiizando el método de "Gini" como medida de la impureza:
+Creamos un modelo de árbol de decisión inicial básico y sin podar utilizando las 11 variables predictoras que tenemos a nuestra disposición y utilizando el método de "Gini" como medida de la impureza:
 
 ```{r}
 # árbol de clasificación con las opciones por defecto (cp = 0.01 y split = "gini") con el comando:
@@ -1518,6 +1522,8 @@ caret::confusionMatrix(pred_tree2, obs_tree2)
 Aplicando la poda a nuestro árbol obtenemos un modelo mas limpio, simple, explicativo y generalizable a otro conjunto de datos, evitando el posible sobreajuste del modelo y solo reduciendo su capacidad predictora a un valor de precisión del 74.67%. Entendemos que este modelo podado será el óptimo en este caso.
 
 ### 10.3.1. DECISION TREE - Cross Validation, Hiperparámetros y Evaluación del modelo
+
+Tratamos de aplicar Cross Validation sobre el modelo de árbol de decisión y realizar una selección de hiperparámetros (se busca tener un modelo robusto, generalizable y comparable con el resto para la posterior selección del mejor):
 
 De cara a obtener el mejor modelo posible realizaremos validación cruzada de 5 folds y trataremos de ajustar hiperparámetros (el "cp" óptimo para un modelo ya validado). Utilizamos además las variables que hemos vito como más representativas y explicativas de la variable respuesta "nota_vino".
 
@@ -1652,7 +1658,9 @@ varImpPlot(rf)
 
 ### 10.4.1. RANDOM FOREST - Cross Validation, Hiperparámetros y Evaluación del modelo
 
-Vemos que el principal pa´rametro a configurar es el número de predictores al azar que toma el modelo.
+Tratamos de aplicar Cross Validation sobre el modelo de random forest y realizar una selección de hiperparámetros (se busca tener un modelo robusto, generalizable y comparable con el resto para la posterior selección del mejor):
+
+Vemos que el principal parámetro a configurar es el número de predictores al azar que toma el modelo.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 
@@ -1804,7 +1812,6 @@ modelLookup("ada")
 
 Vemos los parámetros de "iter", "maxdepth" y "nu" que tiene el modelo ada de boosting para árboles de decisión en problemas de clasificación.
 
-
 ```{r}
 set.seed(123)
 caret.ada <- train(as.factor(nota_vino) ~ ., method = "ada", data = train_en,
@@ -1822,7 +1829,7 @@ caret.ada$bestTune
 ```
 
 
-Con el modelo de base obtenemos un accuracy del 80.3% con los datos de train.
+Con el modelo de base obtenemos un accuracy del 76% con los datos de train.
 
 ```{r, include=TRUE, message=FALSE, warning = FALSE,tidy=TRUE, tidy.opts=list(width.cutoff=60)}
 get_best_result = function(caret_fit) {
@@ -2010,7 +2017,7 @@ Creamos el modelo realizando un centrado y escalado de las variables y con valid
 ```{r}
 set.seed(5555)
 # Fit the model 
-caret.svm <- train(as.factor(nota_vino) ~., data = train_svm, 
+caret.svm <- train(as.factor(nota_vino) ~ ., data = train_svm, 
                    method = "svmLinear", 
                    trControl = trainControl("cv", number = 5, search = "grid",returnResamp = "final"),
                    preProcess = c("center","scale"),
@@ -2157,6 +2164,8 @@ auc(roc_svm_radial)
 Se obtiene alrededor de un 80/81% de área bajo la curva.
 
 # 11. Aprendizaje no supervisado
+
+En este apartado analizaremos diferentes algoritmos no supervisados (con datos no etiquetados para su predicción o clasificación) sobre nuestro conjunto de datos sobre vinos.
 
 ## 11.1. K-MEANS
 
@@ -2495,6 +2504,7 @@ Los modelos que mejor encajan para la clasificación de los vino entre aprobados
 modelos <- list(KNN = caret.knn, GLM = caret.glm,
                 DT = caret.tree, RF = caret.rf,
                 ADA = caret.ada, XGB = caret.xgb)
+
 resultados_resamples <- resamples(modelos)
 #resultados_resamples$values
 #colMeans(resultados_resamples$values[,-1])
@@ -2749,27 +2759,34 @@ auc(roc_xgb_test)
 
 # 15. Conclusiones generales del estudio
 
-* **Regresión Lineal Mútiple:** Vemos una falta de adecuación y ajuste del modelo de regresión lineal múltiple obtenido. Se observa un modelo con unos residuos que presentan heterocedasticidad (varianza no constante en el modelo - se viola la homocedasticidad) y que además no predice de forma adecuada la variable respuesta o dependiente, en base a las variables explicativas o independientes. Al tener una variable dependiente como "quality" que es discreta, un modelo de regresión linela normal no se ajusta a nuestros datos.
+## 15.1. Conclusiones FAD
+
+* **Regresión Lineal Mútiple:** 
+
+Vemos una falta de adecuación y ajuste del modelo de regresión lineal múltiple obtenido. Se observa un modelo con unos residuos que presentan heterocedasticidad (varianza no constante en el modelo - se viola la homocedasticidad) y que además no predice de forma adecuada la variable respuesta o dependiente, en base a las variables explicativas o independientes. Al tener una variable dependiente como "quality" que es discreta, un modelo de regresión linela normal no se ajusta a nuestros datos.
+
+## 15.2. Conclusiones ML1
+
+* **Métrica de evaluación y punto de corte:** 
+
+La métrica de evaluación y comparación entre modelos finalmente elegida ha sido el "Accuracy" (se busca con el presente trabajar predecir cuando un vino está aprobado y es bebible, y cuando, por el contrario, está suspenso y se debe tratar de evitar su recomendación o consumo), estableciendo el punto de corte en 0.5 (se han realizado pruebas con puntos de corte de 0.3, 0.5, 0.6, 0.7 y 0.8, y los mejores resultados obtenidos, los cuales maximizan nuestra métrica de evaluación, han sido con el punto de corte en 0.5).
 
 * **Reducción de la Dimensionalidad (PCA y t-SNE):**
 
-* **Regresión Logística (GLM):** 
+Tras evaluar una reducción de la dimensión del conjunto de datos, llegamos a la conclusión de que en nuestro caso no es positivo realizarla ya que para tener en cuenta un % sufiente de la varianza de nuestro datos, se deben coger demasiadas componentes principales, no logrando el obgetivo de esta técnica y perdiendo en explicabilidad.
 
-* **KNN:**
+* **Ajuste de Hiperparámetros y Validación cruzada (Tuning y Cross Validation):**
 
-* **Decision Tree:**
+Siempre que ha sido posible se ha aplicado a los diferentes modelo un ajuste de los hiperparámetros para asegurar la 
+optima configuración del algoritmo que asegure su comparabilidad, y se ha realizado una comprobación de la generalización del modelo mediente la técnica de Cross Validation (con 5 folds) para asegurar de esa forma su robustez.
 
-* **Métodos de Ensamble:**
+* **Comparativa entre modelos:** 
 
-* **Random Forest:**
+Se han realizado diferentes análisis y pruebas con los distintos algoritmos propuestos en la rúbrica de la asignatura consiguiendo resultados aceptables con la mayoría de ellos. Los que se han mostrado como más precisos y sencillos de implementar con nuestros datos han sido lo de clasificación con árboles de decisión, random forest y métodos de ensamble basados en los mismos.
 
-* **SVM:**
+* **Resultados finales del análisis:** 
 
-* **Ajuste de Hiperparámetros (Tuning):**
+Finalmente se ha decidio optar por los algoritmos de Random Forest (algoritmo incluido en la rúbrica) y XG Boost (algoritmo no incluido en la rúbrica) como los modelos elegido como mejores. Ambos han sido comprobados con los datos de test al final del análisis y se han mostrado como modelos generalizables, robustos y con resultados relativamente similares tanto en train como en test, siendo esto un resultado final del trabajo positivo.
 
-* **Validación cruzada (Cross Validation):**
 
-* **Clustering (K-means):**
-
-* **GAM:**
 
